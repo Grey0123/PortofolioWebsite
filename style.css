@@ -5,7 +5,6 @@
     box-sizing: border-box;
 }
 
-
 body {
     background: #080808;
     color: white;
@@ -19,7 +18,9 @@ html{
 #header{
     width: 100%;
     height: 100vh;
-    background-image: url(images/background.png);
+    background-image: 
+    linear-gradient(to bottom, rgba(0, 0, 0, 0) 60%, #080800 100%),
+    url('images/background-new.png');
     background-size: cover;
     background-position: center;
 }
@@ -34,6 +35,12 @@ nav{
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
+    margin: 15px 0;
+}
+
+.ng-logo{
+    width: 55px;
+    padding-right: 10px;
 }
 
 .logo{
@@ -170,11 +177,24 @@ nav ul li a:hover::after{
 
 #services{
     padding: 30px 0;
+    width: 100%;
+    height: 100vh;
+    background: 
+    linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 20%),
+    linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 20%),
+    url('images/background-new.png');
+    background-size: cover;
+    background-position: center;
+    transform: scaleY(-1) scaleX(-1);
+}
+
+#services > *{
+    transform: scaleY(-1) scaleX(-1);
 }
 
 .services-list{
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
     grid-gap: 40px;
     margin-top: 50px;
 
@@ -186,7 +206,7 @@ nav ul li a:hover::after{
     font-size: 13px;
     font-weight: 300;
     border-radius: 10px;
-    transition: background 0.5s, transform 0.5s;
+    transition: all 0.5s;
 }
 
 .services-list div i{
@@ -209,8 +229,44 @@ nav ul li a:hover::after{
 }
 
 .services-list div:hover{
-    background: blue;
+    background: transparent;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 15px rgba(0, 183, 255, 0.7);
     transform: translateY(-10px);
+    color: aqua;
+}
+
+.services-list div:hover::before{
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: 50%;
+    width: 20%;
+    height: 200%;
+    background-image: linear-gradient(180deg, rgb(0,183,255), rgb(255,48,255));
+    animation: rotBGimg 3s linear infinite;
+    transition: all 0.2s linear;
+    z-index: -1;
+}
+
+.services-list div:hover::after{
+    content: '';
+    position: absolute;
+    background: #07182e;
+    inset: 4px;
+    border-radius: 10px;
+    z-index: -1;
+}
+
+@keyframes rotBGimg{
+    from{
+        transform: rotate(0deg);
+    }
+
+    to{
+        transform: rotate(360deg);
+    }
 }
 
 /* ------ Portofolio ------- */
