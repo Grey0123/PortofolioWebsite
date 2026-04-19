@@ -103,13 +103,13 @@ body {
 }
 
 /* Animated gradient "tip glow" used on service cards on hover.
-   How it works (matching the original effect):
-   - .glow-ring is the card. It clips overflow so the rotating bar stays inside.
-   - ::before is a tall, narrow gradient bar that rotates inside the card.
-   - ::after is an inner cover (same color as the card) with a 3px inset, so
-     only the thin rim around the edges lets the rotating bar peek through.
-     That rim is the "tips" glow you see sweeping around the card.
-   - Both pseudo-elements fade in only on hover. */
+   How it works:
+   - The card gets `.glow-ring` and `overflow: hidden` so anything outside is clipped.
+   - ::before draws a conic-gradient that rotates inside the card. It sits at the
+     very edge (`inset: -1px`) with `padding: 2px`, then uses mask-composite to
+     cut out the middle — leaving only a 2px-wide rim showing the rotating gradient.
+   - That's the glowing "tips" effect: the gradient appears only along the border,
+     never as a visible block inside the card, because the mask erases the interior. */
 .glow-ring {
   position: relative;
   overflow: hidden;
@@ -118,45 +118,41 @@ body {
 .glow-ring::before {
   content: "";
   position: absolute;
-  top: -50%;
-  left: 50%;
-  width: 20%;
-  height: 200%;
-  background-image: linear-gradient(180deg, #00b7ff, #ff30ff);
-  animation: rotBGimg 3s linear infinite;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 0;
-}
-
-.glow-ring::after {
-  content: "";
-  position: absolute;
-  inset: 3px;
-  background: #262626; /* same as the card color — masks the gradient's middle */
+  inset: -1px;
   border-radius: inherit;
+  padding: 2px;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    #00b7ff 60deg,
+    #ff30ff 100deg,
+    #00b7ff 140deg,
+    transparent 200deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  animation: rotBGimg 3s linear infinite;
+  pointer-events: none;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.4s ease;
   z-index: 1;
 }
 
-.glow-ring:hover::before,
-.glow-ring:hover::after {
+.glow-ring:hover::before {
   opacity: 1;
 }
 
-/* Actual card content must sit above the ::after mask, otherwise hover would
-   visually "swallow" the icon / text. */
+/* Card content sits above the gradient ring */
 .glow-ring > * {
   position: relative;
   z-index: 2;
 }
 
 @keyframes rotBGimg {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }

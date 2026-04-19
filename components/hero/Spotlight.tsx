@@ -1,5 +1,5 @@
-// Client Component — tracks mouse position to power the cursor-follow glow.
 "use client";
+// Client Component — tracks mouse position to power the cursor-follow glow.
 
 import { useEffect, useRef } from "react";
 

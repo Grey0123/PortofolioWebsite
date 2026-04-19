@@ -1,8 +1,8 @@
+"use client";
 // Reusable scroll-triggered animation wrapper.
 // Wrap any section in <FadeInSection>...</FadeInSection> and it'll fade/slide
 // in once it enters the viewport — once only, so scrolling back doesn't
 // replay. The `delay` prop lets you stagger siblings.
-"use client";
 
 import { motion, type Variants } from "framer-motion";
 import type { ReactNode } from "react";

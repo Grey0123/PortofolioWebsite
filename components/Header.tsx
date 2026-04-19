@@ -6,21 +6,24 @@ import Navbar from "./Navbar";
 import HeroBackground from "./background/HeroBackground";
 import RotatingRole from "./hero/RotatingRole";
 import Spotlight from "./hero/Spotlight";
+import StatsStrip from "./StatsStrip";
 
 export default function Header() {
   return (
     <section
       id="home"
       // `group` enables `group-hover:` utilities on children — Spotlight uses it.
-      className="group relative min-h-screen w-full overflow-hidden"
+      // StatsStrip now sits just below the CTA buttons instead of being pushed
+      // to the bottom, so no flex-1 trickery here — just natural flow.
+      className="group relative w-full overflow-hidden pb-16 md:pb-24"
     >
       <HeroBackground />
       <Spotlight />
 
-      <div className="relative z-10 mx-auto max-w-[1400px] px-6 md:px-[10%]">
+      <div className="relative z-10 mx-auto flex w-full max-w-[1400px] flex-col px-6 md:px-[10%]">
         <Navbar />
 
-        <div className="mt-[18vh] max-w-3xl md:mt-[20vh]">
+        <div className="mt-[15vh] max-w-3xl md:mt-[17vh]">
           <p className="text-sm uppercase tracking-[0.35em] text-muted">
             Portfolio · Indonesia
           </p>
@@ -54,6 +57,11 @@ export default function Header() {
               Get In Touch
             </a>
           </div>
+        </div>
+
+        {/* Small breathing room below the CTA row, then the stats strip. */}
+        <div className="mt-16 md:mt-20">
+          <StatsStrip />
         </div>
       </div>
     </section>

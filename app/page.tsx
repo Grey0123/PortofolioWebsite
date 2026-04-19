@@ -1,8 +1,10 @@
 // Home route. Each section is wrapped in <FadeInSection> so it animates into
 // view on scroll — you get that modern narrative-scroll feel for free.
+//
+// Note: Header renders its own Navbar + StatsStrip internally, so those are
+// NOT rendered again here.
 
 import Header from "@/components/Header";
-import StatsStrip from "@/components/StatsStrip";
 import TechMarquee from "@/components/TechMarquee";
 import About from "@/components/About";
 import Services from "@/components/Services";
@@ -15,13 +17,8 @@ import FadeInSection from "@/components/animations/FadeInSection";
 export default function HomePage() {
   return (
     <main>
-      {/* Hero has its own internal animations (spotlight + rotating role). */}
+      {/* Hero owns its own Navbar, background, spotlight, and StatsStrip. */}
       <Header />
-
-      {/* Stats strip overlaps the bottom of the hero for a floating-card look. */}
-      <FadeInSection>
-        <StatsStrip />
-      </FadeInSection>
 
       <FadeInSection delay={0.1}>
         <TechMarquee />

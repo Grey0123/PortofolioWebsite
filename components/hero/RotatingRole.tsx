@@ -1,5 +1,5 @@
-// Client Component — cycles through roles using setInterval + state.
 "use client";
+// Client Component — cycles through roles using setInterval + state.
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";

@@ -50,7 +50,9 @@ function Counter({ to, suffix }: { to: number; suffix?: string }) {
 
 export default function StatsStrip() {
   return (
-    <div className="relative z-10 mx-auto -mt-12 max-w-[1400px] px-6 md:-mt-16 md:px-[10%]">
+    // No outer wrapper / negative margin anymore — the hero gives it the
+    // right padding. This makes StatsStrip portable (can be dropped anywhere).
+    <div className="w-full">
       <div className="grid grid-cols-2 gap-4 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur md:grid-cols-4 md:p-8">
         {STATS.map((stat) => {
           const Icon = stat.icon;
