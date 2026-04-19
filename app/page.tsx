@@ -1,0 +1,53 @@
+// Home route. Each section is wrapped in <FadeInSection> so it animates into
+// view on scroll — you get that modern narrative-scroll feel for free.
+
+import Header from "@/components/Header";
+import StatsStrip from "@/components/StatsStrip";
+import TechMarquee from "@/components/TechMarquee";
+import About from "@/components/About";
+import Services from "@/components/Services";
+import Portfolio from "@/components/Portfolio";
+import Travel from "@/components/Travel";
+import Contact from "@/components/Contact";
+import Footer from "@/components/Footer";
+import FadeInSection from "@/components/animations/FadeInSection";
+
+export default function HomePage() {
+  return (
+    <main>
+      {/* Hero has its own internal animations (spotlight + rotating role). */}
+      <Header />
+
+      {/* Stats strip overlaps the bottom of the hero for a floating-card look. */}
+      <FadeInSection>
+        <StatsStrip />
+      </FadeInSection>
+
+      <FadeInSection delay={0.1}>
+        <TechMarquee />
+      </FadeInSection>
+
+      <FadeInSection>
+        <About />
+      </FadeInSection>
+
+      <FadeInSection>
+        <Services />
+      </FadeInSection>
+
+      <FadeInSection>
+        <Portfolio />
+      </FadeInSection>
+
+      <FadeInSection>
+        <Travel />
+      </FadeInSection>
+
+      <FadeInSection>
+        <Contact />
+      </FadeInSection>
+
+      <Footer />
+    </main>
+  );
+}
