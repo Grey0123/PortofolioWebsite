@@ -1,11 +1,14 @@
 // Home route. Each section is wrapped in <FadeInSection> so it animates into
 // view on scroll — you get that modern narrative-scroll feel for free.
 //
-// Note: Header renders its own Navbar + StatsStrip internally, so those are
-// NOT rendered again here.
+// Notes:
+// - Header renders its own Navbar + StatsStrip internally, so those are
+//   NOT rendered again here.
+// - Header also now embeds the interactive <OrbitSystem/> beside the hero
+//   text, so the standalone <TechMarquee/> section is intentionally removed
+//   to avoid showing the same widget twice.
 
 import Header from "@/components/Header";
-import TechMarquee from "@/components/TechMarquee";
 import About from "@/components/About";
 import Services from "@/components/Services";
 import Portfolio from "@/components/Portfolio";
@@ -17,12 +20,9 @@ import FadeInSection from "@/components/animations/FadeInSection";
 export default function HomePage() {
   return (
     <main>
-      {/* Hero owns its own Navbar, background, spotlight, and StatsStrip. */}
+      {/* Hero owns its own Navbar, background, spotlight, stats strip, AND
+          the interactive services orbit. */}
       <Header />
-
-      <FadeInSection delay={0.1}>
-        <TechMarquee />
-      </FadeInSection>
 
       <FadeInSection>
         <About />

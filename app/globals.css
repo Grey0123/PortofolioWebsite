@@ -118,31 +118,28 @@ body {
 .glow-ring::before {
   content: "";
   position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 2px;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    #00b7ff 60deg,
-    #ff30ff 100deg,
-    #00b7ff 140deg,
-    transparent 200deg,
-    transparent 360deg
-  );
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask-composite: exclude;
+  top: -50%;
+  left: 50%;
+  width: 20%;
+  height: 200%;
+  background-image: linear-gradient(180deg, #00b7ff, #ff30ff);
   animation: rotBGimg 3s linear infinite;
-  pointer-events: none;
   opacity: 0;
-  transition: opacity 0.4s ease;
+  z-index: 0;
+}
+
+.glow-ring::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: #262626; /* same as the card color — masks the gradient's middle */
+  border-radius: inherit;
+  opacity: 0;
   z-index: 1;
 }
 
-.glow-ring:hover::before {
+.glow-ring:hover::before,
+.glow-ring:hover::after {
   opacity: 1;
 }
 
@@ -155,4 +152,15 @@ body {
 @keyframes rotBGimg {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
+}
+
+/* Starfield twinkle — used by the brighter stars in the hero background.
+   Each star gets a random `animation-delay` inline so they don't all
+   twinkle in sync (which would look artificial). */
+.hero-star-twinkle {
+  animation: heroStarTwinkle 3.2s ease-in-out infinite;
+}
+@keyframes heroStarTwinkle {
+  0%, 100% { opacity: 1;    transform: scale(1); }
+  50%      { opacity: 0.25; transform: scale(0.55); }
 }

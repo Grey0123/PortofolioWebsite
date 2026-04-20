@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import SectionAura from "./background/SectionAura";
 
 // A literal union type: `TabKey` can only be one of these three strings. TS
 // will flag typos. Great safety net.
@@ -102,7 +103,9 @@ export default function About() {
   const [active, setActive] = useState<TabKey>("skills");
 
   return (
-    <section id="about" className="px-6 py-24 md:px-[10%]">
+    <section id="about" className="relative overflow-hidden px-6 py-24 md:px-[10%]">
+      {/* Thematic accent — cyan top-left to echo the hero aurora. */}
+      <SectionAura color="cyan" position="top-left" />
       <div className="mx-auto flex max-w-[1400px] flex-col gap-12 md:flex-row md:items-start">
         <div className="md:basis-[35%]">
           <div className="relative aspect-square overflow-hidden rounded-2xl border border-white/10">

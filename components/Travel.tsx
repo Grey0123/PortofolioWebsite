@@ -10,6 +10,7 @@
 
 import Image from "next/image";
 import { FaMapMarkerAlt } from "react-icons/fa";
+import SectionAura from "./background/SectionAura";
 
 type Place = {
   place: string;
@@ -53,8 +54,12 @@ const PLACES: Place[] = [
 
 export default function Travel() {
   return (
-    <section id="travel" className="px-6 py-24 md:px-[10%]">
-      <div className="mx-auto max-w-[1400px]">
+    <section
+      id="travel"
+      className="relative overflow-hidden px-6 py-24 md:px-[10%]"
+    >
+      <SectionAura color="amber" position="center-left" opacity={0.14} />
+      <div className="relative mx-auto max-w-[1400px]">
         <div className="flex flex-col gap-2">
           <span className="text-sm uppercase tracking-[0.3em] text-accent">
             Beyond the code

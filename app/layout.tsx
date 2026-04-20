@@ -4,6 +4,7 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
+import PageBackground from "@/components/background/PageBackground";
 
 // next/font auto-optimizes Google Fonts: no <link> tag, no FOIT.
 const poppins = Poppins({
@@ -32,6 +33,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={poppins.variable}>
       <body className="bg-ink font-sans text-white antialiased">
+        {/* Global deep-space layer. Sits BEHIND every section so stars and
+            nebula washes continue from the hero through About → Services →
+            Portfolio → Travel → Contact, giving the whole page a single
+            cohesive "universe". */}
+        <PageBackground />
         {children}
       </body>
     </html>

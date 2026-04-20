@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { FaLink } from "react-icons/fa";
+import SectionAura from "./background/SectionAura";
 
 type Work = {
   image: string;
@@ -34,8 +35,12 @@ const WORKS: Work[] = [
 
 export default function Portfolio() {
   return (
-    <section id="portfolio" className="px-6 py-24 md:px-[10%]">
-      <div className="mx-auto max-w-[1400px]">
+    <section
+      id="portfolio"
+      className="relative overflow-hidden px-6 py-24 md:px-[10%]"
+    >
+      <SectionAura color="pink" position="top-right" opacity={0.16} />
+      <div className="relative mx-auto max-w-[1400px]">
         <h2 className="text-4xl font-semibold md:text-6xl">My Work</h2>
         <p className="mt-4 max-w-2xl text-muted">
           A selection of projects across data engineering, automation, and AI.

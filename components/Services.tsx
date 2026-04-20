@@ -1,6 +1,7 @@
 // Static Server Component (no "use client") — just markup.
 // The glow hover effect and CSS variables carry all the interactivity.
 
+import SectionAura from "./background/SectionAura";
 import {
   FaDatabase,
   FaRobot,
@@ -179,6 +180,9 @@ export default function Services() {
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-[60%] bg-[radial-gradient(ellipse_at_top,rgba(255,0,79,0.08),transparent_60%)]"
       />
+      {/* Magenta accent bottom-right — keeps the section feeling "plugged in"
+          to the hero's universe without being a straight copy of it. */}
+      <SectionAura color="magenta" position="bottom-right" opacity={0.14} />
 
       <div className="relative mx-auto max-w-[1400px]">
         <div className="flex flex-col gap-3">
