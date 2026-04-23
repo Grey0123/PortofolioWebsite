@@ -80,8 +80,10 @@ export default function Header() {
           <div className="md:col-span-5">
             <div className="relative mx-auto w-full max-w-[520px] md:max-w-none">
               <OrbitSystem />
-              {/* Caption sits BELOW the orbit so the widget leads visually. */}
-              <p className="mt-4 text-center text-xs uppercase tracking-[0.3em] text-muted">
+              {/* Caption sits BELOW the orbit with generous top margin so it
+                  has visible breathing room from the outermost orbit ring —
+                  the widget should feel finished before the words start. */}
+              <p className="mt-8 text-center text-xs uppercase tracking-[0.3em] text-muted md:mt-10">
                 <span className="text-accent">●</span> Click the core to
                 explore services
               </p>

@@ -234,10 +234,16 @@ const SIZE = 720;
 // Three intersecting orbit planes for a real 3D feel.
 // tiltDeg rotates the ring around the horizontal (X) axis (top-forward if +).
 // yawDeg rotates the ring around the vertical (Y) axis.
+//
+// Radii were widened ([210, 260, 310] → [240, 285, 325]) so the bigger
+// central hub has ~165 design-px of breathing room before the first ring,
+// which reads as clear visual separation instead of "hub kissing orbit".
+// Outer ring + item chip half-width + hover scale still fits inside the
+// 720-px canvas with a small safety margin.
 const ORBITS: Orbit[] = [
-  { radius: 180, speed: 0.28, tiltDeg: 72, yawDeg:   0 }, // Saturn-horizontal
-  { radius: 235, speed: 0.18, tiltDeg: 22, yawDeg:  70 }, // near-vertical, yawed
-  { radius: 290, speed: 0.12, tiltDeg: 50, yawDeg: -35 }, // diagonal outer
+  { radius: 280, speed: 0.70, tiltDeg: 72, yawDeg:   0 }, // Saturn-horizontal
+  { radius: 325, speed: 0.46, tiltDeg: 22, yawDeg:  70 }, // near-vertical, yawed
+  { radius: 365, speed: 0.30, tiltDeg: 50, yawDeg: -35 }, // diagonal outer
 ];
 
 /* ============================================================
@@ -479,9 +485,12 @@ function ServicesHub({
   onClick: () => void;
 }) {
   const Icon = service.Icon;
-  // Hub container takes ~14% of the canvas (down from ~19%) so it feels
-  // centered without dominating — especially in the compact hero-side layout.
-  const hubPct = (100 / SIZE) * 100; // 100/720 ≈ 13.9%
+  // Hub container takes ~20.8% of the canvas. Larger than before so the core
+  // reads as a proper focal point, while still leaving a clear gap to the
+  // innermost orbit (now at 240 design-px):
+  //   hub radius  ≈ 75 design-px
+  //   gap to inner orbit ≈ 240 − 75 = 165 design-px of empty space.
+  const hubPct = (150 / SIZE) * 100; // 150/720 ≈ 20.8%
   return (
     <div
       className="pointer-events-none absolute left-1/2 top-1/2 z-30 flex items-center justify-center"
@@ -496,7 +505,7 @@ function ServicesHub({
         className="pointer-events-none absolute inset-0 rounded-full"
         style={{
           background: `radial-gradient(circle, ${service.color}55 0%, ${service.color}22 45%, transparent 70%)`,
-          filter: "blur(14px)",
+          filter: "blur(18px)",
         }}
       />
 
@@ -507,27 +516,54 @@ function ServicesHub({
         transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      {/* Clickable hub — shrunk: outer disc is 62% of the (smaller) container,
-          inner core is 76% of that. Icon scales down accordingly. */}
+      {/* Clickable hub — the BUTTON is now the full hub area (rounded-full
+          circle inscribed in the wrapper), while the visible conic-gradient
+          disc + inner core are rendered as pointer-events-none children.
+          Why: previously the button was only 66% wide, but the bloom glow
+          extends across the full hub area, so users see "one big circle" but
+          only the inner 66% was clickable. As the cursor drifted from the
+          visible disc out into the bloom, it toggled pointer↔default — that
+          was the hover flicker. Making the button fill the wrapper gives the
+          whole glowing center a single, consistent hit target.
+          NO `whileHover`: the click-outside catcher (z-[45]) overlays the
+          hub the instant the selector opens, so the hub's `onMouseLeave`
+          fires mid-click and whileHover would release while `animate` is
+          still running — producing a visible scale pop each click.
+          `animate` alone handles the open-state scale cleanly.
+          Similarly, no `rotateZ` on open: a 180° snap during a pointer event
+          just read as flicker rather than polish. */}
       <motion.button
         type="button"
         onClick={onClick}
-        animate={{ scale: isOpen ? 1.08 : 1, rotateZ: isOpen ? 180 : 0 }}
-        whileHover={{ scale: 1.08 }}
-        transition={{ type: "spring", stiffness: 220, damping: 20 }}
-        className="pointer-events-auto relative flex h-[62%] w-[62%] items-center justify-center rounded-full border border-white/20 text-white"
-        style={{
-          background: `conic-gradient(from 140deg, ${service.color}, #ff30ff, #00b7ff, ${service.color})`,
-          boxShadow: `0 0 36px ${service.color}aa, inset 0 0 16px rgba(255,255,255,0.25)`,
-        }}
+        animate={{ scale: isOpen ? 1.08 : 1 }}
+        transition={{ type: "spring", stiffness: 220, damping: 22 }}
+        // Full hub area = one hit target. `bg-transparent` keeps the circle
+        // invisible; the visible disc is a child div below.
+        className="pointer-events-auto absolute inset-0 flex items-center justify-center rounded-full bg-transparent"
         aria-expanded={isOpen}
         aria-label={`Services hub — ${service.name}`}
       >
+        {/* Visible gradient disc — 66% of hub wrapper. pointer-events-none so
+            clicks always go to the button behind/around it (no flicker at the
+            boundary). `transition-[box-shadow]` gives subtle hover feedback
+            via the button's `group`-less `:hover` cascade below. */}
         <div
-          className="flex h-[76%] w-[76%] items-center justify-center rounded-full bg-[#0a0a14]"
-          style={{ boxShadow: `inset 0 0 14px ${service.color}66` }}
+          className="pointer-events-none relative flex h-[66%] w-[66%] items-center justify-center rounded-full border border-white/20 text-white transition-[box-shadow] duration-200"
+          style={{
+            background: `conic-gradient(from 140deg, ${service.color}, #ff30ff, #00b7ff, ${service.color})`,
+            boxShadow: `0 0 44px ${service.color}bb, inset 0 0 20px rgba(255,255,255,0.28)`,
+          }}
         >
-          <Icon className="text-lg md:text-xl" style={{ color: service.color }} />
+          <div
+            className="flex h-[78%] w-[78%] items-center justify-center rounded-full bg-[#0a0a14]"
+            style={{ boxShadow: `inset 0 0 18px ${service.color}77` }}
+          >
+            {/* Icon nudged a touch smaller so the inner core feels less "stuffed"
+                and the conic-gradient ring around it has more visual breathing
+                room. `text-xl md:text-2xl` keeps it legible at the hub's current
+                size (150 design-px * 66% inner disc * 78% inner core). */}
+            <Icon className="text-xl md:text-2xl" style={{ color: service.color }} />
+          </div>
         </div>
       </motion.button>
     </div>
@@ -804,19 +840,25 @@ export function OrbitSystem() {
   );
 
   return (
-    <div
-      ref={wrapRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className="relative mx-auto aspect-square w-full max-w-[720px] select-none"
-      style={{
-        // Perspective makes child translate3d actually feel 3D. Higher value
-        // → flatter look; lower → more exaggerated depth.
-        perspective: "1200px",
-        perspectiveOrigin: "50% 50%",
-      }}
-    >
-      <Starfield />
+    // Outer wrapper holds both the 3D scene (aspect-square) and the status
+    // label. Pulling the label OUT of the aspect-square means it can't ever
+    // overlap the outer orbit — it just flows below the scene with its own
+    // margin. wrapRef stays on the scene container so the ResizeObserver
+    // measures the correct square for scale math.
+    <div className="relative mx-auto w-full max-w-[720px] select-none">
+      <div
+        ref={wrapRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className="relative aspect-square w-full"
+        style={{
+          // Perspective makes child translate3d actually feel 3D. Higher value
+          // → flatter look; lower → more exaggerated depth.
+          perspective: "1200px",
+          perspectiveOrigin: "50% 50%",
+        }}
+      >
+        <Starfield />
 
       {/* Radial glow behind the scene */}
       <div
@@ -904,35 +946,40 @@ export function OrbitSystem() {
             setSelectorOpen(false);
           }}
         />
+        </div>
       </div>
 
-      {/* Status label — bottom-center, reactive to selection */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={selectedService.id}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.3 }}
-          className="pointer-events-none absolute bottom-6 left-1/2 z-30 -translate-x-1/2 text-center"
-        >
-          <div
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/65 px-4 py-1.5 backdrop-blur-md"
-            style={{ boxShadow: `0 0 22px ${selectedService.color}55` }}
+      {/* Status label — sits BELOW the aspect-square scene in normal flow,
+          so the outer orbit can never collide with it no matter how wide the
+          orbits get. Margin-top gives it breathing room from the widget. */}
+      <div className="mt-6 flex justify-center">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={selectedService.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            className="pointer-events-none text-center"
           >
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: selectedService.color }}
-            />
-            <span className="text-xs font-semibold text-white">
-              {selectedService.name}
-            </span>
-            <span className="hidden text-[11px] text-white/60 sm:inline">
-              · {selectedService.tagline}
-            </span>
-          </div>
-        </motion.div>
-      </AnimatePresence>
+            <div
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/65 px-4 py-1.5 backdrop-blur-md"
+              style={{ boxShadow: `0 0 22px ${selectedService.color}55` }}
+            >
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: selectedService.color }}
+              />
+              <span className="text-xs font-semibold text-white">
+                {selectedService.name}
+              </span>
+              <span className="hidden text-[11px] text-white/60 sm:inline">
+                · {selectedService.tagline}
+              </span>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
