@@ -2,36 +2,45 @@
 
 import { animate, useInView, useMotionValue, useTransform } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { FaBriefcase, FaProjectDiagram, FaUserTie, FaMapMarkerAlt } from "react-icons/fa";
-import type { IconType } from "react-icons";
+import { getIcon } from "@/lib/icons";
+import type { ApiStat } from "@/lib/api";
 
-// Each stat has either a numeric `value` (which counts up) or a `text` value
-// (which just displays). TypeScript's discriminated union keeps these
-// mutually exclusive so the component can't be misused.
-type Stat =
-  | { icon: IconType; label: string; value: number; suffix?: string }
-  | { icon: IconType; label: string; text: string };
+// Local view-model: discriminated union exactly like the old hardcoded
+// version, but now we BUILD it from the API response in the component
+// instead of declaring it inline. The advantage: TypeScript still keeps
+// `value`/`text` mutually exclusive, so the rest of the file is unchanged.
+type StatVM =
+  | { iconName: string; label: string; value: number; suffix?: string }
+  | { iconName: string; label: string; text: string };
 
-const STATS: Stat[] = [
-  { icon: FaBriefcase, label: "Years in tech", value: 3, suffix: "+" },
-  { icon: FaProjectDiagram, label: "Projects shipped", value: 12, suffix: "+" },
-  { icon: FaUserTie, label: "Roles held", value: 4 },
-  { icon: FaMapMarkerAlt, label: "Based in", text: "Indonesia" },
-];
+function toViewModel(api: ApiStat[]): StatVM[] {
+  return api.map((s) => {
+    if (typeof s.value_number === "number") {
+      return {
+        iconName: s.icon,
+        label: s.label,
+        value: s.value_number,
+        suffix: s.suffix ?? undefined,
+      };
+    }
+    return {
+      iconName: s.icon,
+      label: s.label,
+      text: s.value_text ?? "",
+    };
+  });
+}
 
 // Small helper component to count a number from 0 to `to` once it's visible.
 function Counter({ to, suffix }: { to: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "-50px" });
-  // `useMotionValue` holds a number that can drive animations without re-render.
   const count = useMotionValue(0);
-  // `useTransform` derives a new value — here, rounding the float for display.
   const rounded = useTransform(count, (v) => Math.round(v));
   const [display, setDisplay] = useState(0);
 
   useEffect(() => {
     if (!inView) return;
-    // Framer's `animate` tweens the motion value from 0 to `to` over 1.2s.
     const controls = animate(count, to, { duration: 1.2, ease: "easeOut" });
     const unsub = rounded.on("change", (v) => setDisplay(v));
     return () => {
@@ -48,14 +57,15 @@ function Counter({ to, suffix }: { to: number; suffix?: string }) {
   );
 }
 
-export default function StatsStrip() {
+export default function StatsStrip({ stats }: { stats?: ApiStat[] }) {
+  const items = toViewModel(stats ?? []);
+
   return (
-    // No outer wrapper / negative margin anymore — the hero gives it the
-    // right padding. This makes StatsStrip portable (can be dropped anywhere).
     <div className="w-full">
       <div className="grid grid-cols-2 gap-4 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur md:grid-cols-4 md:p-8">
-        {STATS.map((stat) => {
-          const Icon = stat.icon;
+        {items.map((stat) => {
+          // Resolve icon string → component via the registry.
+          const Icon = getIcon(stat.iconName);
           return (
             <div key={stat.label} className="flex items-center gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">

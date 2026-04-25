@@ -1,9 +1,11 @@
-// Central registry for portfolio projects. Adding a new project is literally
-// just appending an object to `WORKS` — the Portfolio section filters and
-// renders from this list automatically. Keeping the data out of the component
-// means the component never has to change as the portfolio grows.
+// Portfolio metadata — types + category definitions.
+//
+// Project rows themselves are fetched from the FastAPI backend and
+// converted to the `Work` view-model below. This file owns the things
+// that make sense to live in source code (category colors, icons,
+// labels) so the UI doesn't need a round-trip to render chips.
 
-import type { ComponentType } from "react";
+import type { IconType } from "react-icons";
 import {
   FaDatabase,
   FaRobot,
@@ -11,15 +13,21 @@ import {
   FaCode,
   FaChartLine,
 } from "react-icons/fa";
+import type { ApiWork } from "./api";
 
 /* ------------------------------------------------------------------
  * Categories
  * ------------------------------------------------------------------
  * Each project belongs to exactly one category. Categories drive the
- * filter chips at the top of the section. If you introduce a new one,
- * add it here (id, label, accent color, icon) and every project that
- * references it will slot right in. The "all" pseudo-category is only
- * used by the filter UI — no project should ever use it.
+ * filter chips at the top of the section. If you add a new one, update
+ * THREE places in lockstep:
+ *   1. `CategoryId` union below
+ *   2. `CATEGORIES` array below
+ *   3. The CHECK constraint on the `works.category` column in
+ *      supabase/schema.sql (and run it against the live DB).
+ *
+ * The "all" pseudo-category is only used by the filter UI — no project
+ * should ever carry it.
  */
 export type CategoryId =
   | "data"
@@ -33,12 +41,8 @@ export type FilterId = "all" | CategoryId;
 export type Category = {
   id: CategoryId;
   label: string;
-  // Accent color used on the chip pill and on the gradient fallback tile
-  // when a project has no image yet. Tailwind-safe hex so it works in
-  // arbitrary value classes AND inline styles.
   color: string;
-  // Icon shown on the fallback tile and (small) on the chip.
-  Icon: ComponentType<{ className?: string }>;
+  Icon: IconType;
 };
 
 export const CATEGORIES: Category[] = [
@@ -49,28 +53,14 @@ export const CATEGORIES: Category[] = [
   { id: "web",        label: "Web",              color: "#ff004f", Icon: FaCode },
 ];
 
-// Helper — callers that need a category by id without scanning the array.
 export function getCategory(id: CategoryId): Category {
   const found = CATEGORIES.find((c) => c.id === id);
-  // Shouldn't happen because TypeScript constrains the input, but we fall
-  // back to the first category rather than crashing the UI at runtime.
   return found ?? CATEGORIES[0];
 }
 
 /* ------------------------------------------------------------------
- * Works
- * ------------------------------------------------------------------
- * Fields:
- *   title       — short, scannable headline.
- *   description — one sentence explaining what/why. Shown on hover.
- *   category    — picks which filter chip shows this card.
- *   tech        — small chips on the card. Keep to 3–5 items.
- *   year        — shown in the corner; also useful for ordering later.
- *   image       — optional. If missing, a gradient fallback is rendered.
- *   href        — optional live demo / case study link.
- *   github      — optional repo link.
- *   featured    — if true, the card gets a subtle highlight border.
- */
+ * Work view-model
+ * ------------------------------------------------------------------ */
 export type Work = {
   title: string;
   description: string;
@@ -83,33 +73,22 @@ export type Work = {
   featured?: boolean;
 };
 
-export const WORKS: Work[] = [
-  {
-    title: "Web Scraping + Telegram Bot",
-    description:
-      "Scrapes live car listings across Indonesian e-commerce sites and pushes a daily price summary to a Telegram channel.",
-    category: "automation",
-    tech: ["Python", "BeautifulSoup", "Telegram API"],
-    year: 2024,
-    image: "/images/work-1.png",
-    featured: true,
-  },
-  {
-    title: "Multi-Platform Product Comparison",
-    description:
-      "Aggregates product listings from multiple marketplaces so shoppers can compare price, stock, and seller reliability side-by-side.",
-    category: "data",
-    tech: ["Python", "Pandas", "Streamlit"],
-    year: 2024,
-    image: "/images/work-2.png",
-  },
-  {
-    title: "AML Reporting System",
-    description:
-      "Oracle-backed Anti-Money-Laundering XML reporting pipeline that flags suspicious transactions and generates regulator-ready files.",
-    category: "data",
-    tech: ["Oracle", "PL/SQL", "XML"],
-    year: 2023,
-    image: "/images/work-3.png",
-  },
-];
+/**
+ * Convert an ApiWork (from /works) into the Work shape the UI consumes.
+ * The two shapes are nearly identical — the converter exists mainly to
+ * normalize null → undefined so downstream components can use simple
+ * optional-chaining instead of explicit null checks.
+ */
+export function toWork(api: ApiWork): Work {
+  return {
+    title: api.title,
+    description: api.description,
+    category: api.category,
+    tech: api.tech,
+    year: api.year,
+    image: api.image ?? undefined,
+    href: api.href ?? undefined,
+    github: api.github ?? undefined,
+    featured: api.featured ?? false,
+  };
+}

@@ -1,12 +1,15 @@
 // Home route. Each section is wrapped in <FadeInSection> so it animates into
 // view on scroll — you get that modern narrative-scroll feel for free.
 //
-// Notes:
-// - Header renders its own Navbar + StatsStrip internally, so those are
-//   NOT rendered again here.
-// - Header also now embeds the interactive <OrbitSystem/> beside the hero
-//   text, so the standalone <TechMarquee/> section is intentionally removed
-//   to avoid showing the same widget twice.
+// This route is now an async Server Component: it fetches the entire
+// `/content` bundle from the FastAPI backend ONCE, then slices the
+// response into props for each section. Benefits:
+//   - One network round-trip per page render instead of six.
+//   - Components stay dumb: they receive their data as props.
+//   - All credentials / fetching logic stay on the server.
+//
+// Portfolio still does its own fetch internally (see components/Portfolio.tsx)
+// because /works is a separate, larger endpoint with its own caching needs.
 
 import Header from "@/components/Header";
 import About from "@/components/About";
@@ -16,20 +19,34 @@ import Travel from "@/components/Travel";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import FadeInSection from "@/components/animations/FadeInSection";
+import { fetchContent } from "@/lib/api";
 
-export default function HomePage() {
+// Same 60s window as the underlying fetcher in lib/api.ts. Declaring it
+// at the page level too makes the cache behavior obvious when reading
+// this file.
+export const revalidate = 60;
+
+export default async function HomePage() {
+  const content = await fetchContent();
+
   return (
     <main>
-      {/* Hero owns its own Navbar, background, spotlight, stats strip, AND
-          the interactive services orbit. */}
-      <Header />
+      <Header
+        rotatingRoles={content.rotating_roles}
+        stats={content.stats}
+        orbitServices={content.orbit_services}
+      />
 
       <FadeInSection>
-        <About />
+        <About
+          skills={content.skills}
+          experience={content.experience}
+          education={content.education}
+        />
       </FadeInSection>
 
       <FadeInSection>
-        <Services />
+        <Services services={content.services} />
       </FadeInSection>
 
       <FadeInSection>
@@ -41,7 +58,10 @@ export default function HomePage() {
       </FadeInSection>
 
       <FadeInSection>
-        <Contact />
+        <Contact
+          contactInfo={content.contact_info}
+          socialLinks={content.social_links}
+        />
       </FadeInSection>
 
       <Footer />

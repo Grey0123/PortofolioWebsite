@@ -1,28 +1,35 @@
-// Client Component because of form state + fetch submit handler.
+// Client Component because of form state + submit handler. Submissions go
+// to the FastAPI backend at POST /messages, which validates the body
+// (Pydantic) and writes it to Supabase using the service-role key.
+//
+// The contact info (email, phone, CV link) and social links are passed
+// down as props from the parent server component — fetched once for the
+// whole page in app/page.tsx.
 "use client";
 
-import { useState } from "react";
-import {
-  FaPaperPlane,
-  FaPhoneAlt,
-  FaFacebook,
-  FaTwitterSquare,
-  FaInstagram,
-  FaLinkedin,
-} from "react-icons/fa";
+import { useState, type FormEvent } from "react";
+import { FaPaperPlane, FaPhoneAlt } from "react-icons/fa";
 
-// Google Apps Script endpoint from the original site. Kept verbatim so the
-// existing submissions pipeline keeps working. Feel free to replace later.
-const SHEET_URL =
-  "https://script.google.com/macros/s/AKfycbywExUvEaXXFbtgayhW3utw6mU7YGUnD573zMhKbBI89M6QFMzUwBUKn9SAK0g4GE6g/exec";
-
-// TypeScript "FormEvent" is the typed version of the browser FormEvent.
-// We tell React which element triggered it (HTMLFormElement) so `e.currentTarget`
-// is correctly typed below.
-import type { FormEvent } from "react";
 import SectionAura from "./background/SectionAura";
+import { submitMessage, type ApiContactInfo, type ApiSocialLink } from "@/lib/api";
+import { getIcon } from "@/lib/icons";
 
-export default function Contact() {
+// Sensible defaults so the section never looks empty if the API is down.
+const FALLBACK: ApiContactInfo = {
+  email: "nabilgaharu@gmail.com",
+  phone: null,
+  cv_url: null,
+};
+
+export default function Contact({
+  contactInfo,
+  socialLinks = [],
+}: {
+  contactInfo?: ApiContactInfo | null;
+  socialLinks?: ApiSocialLink[];
+}) {
+  const info = contactInfo ?? FALLBACK;
+
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle"
   );
@@ -30,16 +37,25 @@ export default function Contact() {
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setStatus("sending");
-    try {
-      const formData = new FormData(e.currentTarget);
-      await fetch(SHEET_URL, { method: "POST", body: formData });
-      setStatus("sent");
-      e.currentTarget.reset();
-      setTimeout(() => setStatus("idle"), 5000);
-    } catch (err) {
-      console.error(err);
+
+    // Snapshot the form BEFORE the await — React nulls e.currentTarget
+    // after the handler yields.
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    const ok = await submitMessage({
+      name: String(formData.get("Name") ?? "").trim(),
+      email: String(formData.get("Email") ?? "").trim(),
+      message: String(formData.get("Message") ?? "").trim() || null,
+    });
+
+    if (!ok) {
       setStatus("error");
+      return;
     }
+    setStatus("sent");
+    form.reset();
+    setTimeout(() => setStatus("idle"), 5000);
   }
 
   return (
@@ -56,54 +72,50 @@ export default function Contact() {
             <h2 className="text-4xl font-semibold md:text-6xl">Contact Me</h2>
             <p className="mt-6 flex items-center gap-3 text-muted">
               <FaPaperPlane className="text-accent" />
-              nabilgaharu@gmail.com
+              {info.email}
             </p>
-            <p className="mt-3 flex items-center gap-3 text-muted">
-              <FaPhoneAlt className="text-accent" />
-              +62 812 8998 870
-            </p>
+            {info.phone && (
+              <p className="mt-3 flex items-center gap-3 text-muted">
+                <FaPhoneAlt className="text-accent" />
+                {info.phone}
+              </p>
+            )}
 
             <div className="mt-8 flex gap-5 text-3xl text-muted">
-              <a href="#" aria-label="Facebook" className="transition hover:-translate-y-1 hover:text-accent">
-                <FaFacebook />
-              </a>
-              <a href="#" aria-label="Twitter" className="transition hover:-translate-y-1 hover:text-accent">
-                <FaTwitterSquare />
-              </a>
-              <a
-                href="https://instagram.com/nabilgaharu"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Instagram"
-                className="transition hover:-translate-y-1 hover:text-accent"
-              >
-                <FaInstagram />
-              </a>
-              <a
-                href="https://www.linkedin.com/in/nabil-gaharu-601535215/"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="LinkedIn"
-                className="transition hover:-translate-y-1 hover:text-accent"
-              >
-                <FaLinkedin />
-              </a>
+              {socialLinks.map((link) => {
+                const Icon = getIcon(link.icon);
+                const isExternal = link.url.startsWith("http");
+                return (
+                  <a
+                    key={link.platform}
+                    href={link.url}
+                    aria-label={link.platform}
+                    target={isExternal ? "_blank" : undefined}
+                    rel={isExternal ? "noopener noreferrer" : undefined}
+                    className="transition hover:-translate-y-1 hover:text-accent"
+                  >
+                    <Icon />
+                  </a>
+                );
+              })}
             </div>
 
-            <a
-              href="/images/CV_Nabil Ananta Satria Gaharu_Updated 2025.pdf"
-              download
-              className="mt-10 inline-block rounded-md bg-accent px-8 py-3 font-medium text-white transition-all hover:brightness-110"
-            >
-              Download CV
-            </a>
+            {info.cv_url && (
+              <a
+                href={info.cv_url}
+                download
+                className="mt-10 inline-block rounded-md bg-accent px-8 py-3 font-medium text-white transition-all hover:brightness-110"
+              >
+                Download CV
+              </a>
+            )}
           </div>
 
           <div className="md:basis-[55%]">
             <form
               onSubmit={handleSubmit}
               className="flex flex-col gap-4"
-              name="submit-to-google-sheet"
+              name="submit-to-api"
             >
               <input
                 type="text"

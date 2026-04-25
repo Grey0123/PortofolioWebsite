@@ -3,33 +3,14 @@
  * "Stellar Orbit Hub" — a true 3D orbital visualization of the services
  * I offer and the tools that power them.
  *
- * ┌────────────────────────────────────────────────────────────────────┐
- * │  MENTAL MODEL                                                      │
- * │                                                                    │
- * │  Scene has CSS `perspective` → child transforms are projected in 3D │
- * │  Three orbit rings intersect at center with different tilts:        │
- * │    - Saturn-ish horizontal plate                                    │
- * │    - Near-vertical ring yawed 70°                                   │
- * │    - Diagonal outer ring                                            │
- * │  Tool items are billboards (2D cards) placed in 3D via translate3d. │
- * │  The browser's perspective projection auto-scales items so ones at  │
- * │  higher +z (closer) appear larger, -z (farther) smaller.            │
- * │  We also fade opacity by z so back-side items feel "distant".       │
- * │                                                                    │
- * │  Animation is a single rAF loop writing transforms directly to DOM  │
- * │  refs — zero React renders per frame. Hover / select are React      │
- * │  state mirrored into refs so the loop reads them without restarting.│
- * └────────────────────────────────────────────────────────────────────┘
+ * The 3D math + animation is unchanged from the original; the only
+ * meaningful difference is that the SERVICES list now comes from the
+ * FastAPI `/content` endpoint as props, instead of being hardcoded
+ * inside this file. Icon names (strings) are resolved to React components
+ * via lib/icons.ts.
  *
- * Components (all in this file, in logical top-down order):
- *   <TechMarquee>       — section wrapper with copy + <OrbitSystem/>
- *   <OrbitSystem>       — the 3D scene, owns rAF + state + parallax
- *     <Starfield/>      — decorative seeded dots
- *     <OrbitRing/>      — one tilted/yawed elliptical ring
- *     <ServicesHub/>    — clickable center node
- *     <ServiceSelector/>— radial menu of services (opens from hub)
- *     <OrbitItem/>      — one tool node on an orbit
- *     <Tooltip/>        — hover label (rendered inside OrbitItem)
+ * For full architecture comments on the rAF loop, perspective math, and
+ * orbital geometry, see the inline notes below.
  */
 
 import {
@@ -38,49 +19,16 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  SiPython,
-  SiTypescript,
-  SiReact,
-  SiNextdotjs,
-  SiNodedotjs,
-  SiTailwindcss,
-  SiSelenium,
-  SiDocker,
-  SiGit,
-  SiMysql,
-  SiFirebase,
-  SiSpring,
-  SiFastapi,
-  SiFlutter,
-  SiTensorflow,
-  SiPostgresql,
-  SiMongodb,
-  SiGraphql,
-  SiRedis,
-  SiOpenai,
-  SiLangchain,
-} from "react-icons/si";
-import {
-  FaJava,
-  FaDatabase,
-  FaRobot,
-  FaCode,
-  FaServer,
-  FaBrain,
-  FaSpider,
-  FaPlug,
-  FaChartLine,
-  FaSatelliteDish,
-} from "react-icons/fa";
 import type { IconType } from "react-icons";
 
+import { getIcon } from "@/lib/icons";
+import type { ApiOrbitService } from "@/lib/api";
+
 /* ============================================================
- * TYPES
+ * INTERNAL TYPES
  * ============================================================ */
 type Tool = {
   name: string;
@@ -88,158 +36,62 @@ type Tool = {
 };
 
 type Service = {
-  id: string;
-  name: string;        // long name used in the hub pill / tooltip
-  shortName: string;   // one word for radial button
+  id: string;        // slug from DB
+  name: string;
+  shortName: string;
   tagline: string;
-  color: string;       // hex accent
-  Icon: IconType;      // shown in center when selected
+  color: string;
+  Icon: IconType;
   tools: Tool[];
 };
 
 type Orbit = {
-  radius: number;      // design-px
-  speed: number;       // radians/sec
-  tiltDeg: number;     // rotateX on the ring plane
-  yawDeg: number;      // rotateY on the ring plane
+  radius: number;
+  speed: number;
+  tiltDeg: number;
+  yawDeg: number;
 };
 
 /* ============================================================
- * DATA — services + their tools. Configurable; order matters only
- * for the radial selector (buttons distributed evenly).
+ * Convert the API shape (icon names as strings) into the internal
+ * shape this component already knows how to render. Doing the
+ * conversion in one place keeps the rest of the file unchanged.
  * ============================================================ */
-const SERVICES: Service[] = [
-  {
-    id: "backend",
-    name: "Backend Development",
-    shortName: "Backend",
-    tagline: "Scalable APIs & services",
-    color: "#00b7ff",
-    Icon: FaServer,
-    tools: [
-      { name: "Java",        icon: <FaJava /> },
-      { name: "Spring Boot", icon: <SiSpring /> },
-      { name: "Node.js",     icon: <SiNodedotjs /> },
-      { name: "FastAPI",     icon: <SiFastapi /> },
-      { name: "GraphQL",     icon: <SiGraphql /> },
-      { name: "Redis",       icon: <SiRedis /> },
-    ],
-  },
-  {
-    id: "ai",
-    name: "AI & Automation",
-    shortName: "AI",
-    tagline: "Intelligent systems & agents",
-    color: "#ff30ff",
-    Icon: FaBrain,
-    tools: [
-      { name: "Python",     icon: <SiPython /> },
-      { name: "TensorFlow", icon: <SiTensorflow /> },
-      { name: "LLMs",       icon: <FaRobot /> },
-      { name: "OpenAI",     icon: <SiOpenai /> },
-      { name: "LangChain",  icon: <SiLangchain /> },
-      { name: "Vector DB",  icon: <FaDatabase /> },
-    ],
-  },
-  {
-    id: "data",
-    name: "Data Engineering",
-    shortName: "Data",
-    tagline: "Reliable pipelines & insights",
-    color: "#43b02a",
-    Icon: FaChartLine,
-    tools: [
-      { name: "PostgreSQL", icon: <SiPostgresql /> },
-      { name: "MySQL",      icon: <SiMysql /> },
-      { name: "MongoDB",    icon: <SiMongodb /> },
-      { name: "Oracle",     icon: <FaDatabase /> },
-      { name: "Python",     icon: <SiPython /> },
-      { name: "SQL" },
-    ],
-  },
-  {
-    id: "scraping",
-    name: "Web Scraping",
-    shortName: "Scraping",
-    tagline: "Collect data at scale",
-    color: "#f89820",
-    Icon: FaSpider,
-    tools: [
-      { name: "Playwright" },
-      { name: "Selenium",      icon: <SiSelenium /> },
-      { name: "Python",        icon: <SiPython /> },
-      { name: "BeautifulSoup" },
-      { name: "Scrapy" },
-      { name: "Puppeteer" },
-    ],
-  },
-  {
-    id: "frontend",
-    name: "Web & Mobile",
-    shortName: "Frontend",
-    tagline: "Elegant user experiences",
-    color: "#ff004f",
-    Icon: FaCode,
-    tools: [
-      { name: "React",      icon: <SiReact /> },
-      { name: "Next.js",    icon: <SiNextdotjs /> },
-      { name: "TypeScript", icon: <SiTypescript /> },
-      { name: "Flutter",    icon: <SiFlutter /> },
-      { name: "Tailwind",   icon: <SiTailwindcss /> },
-      { name: "Firebase",   icon: <SiFirebase /> },
-    ],
-  },
-  {
-    id: "api",
-    name: "API Integration",
-    shortName: "APIs",
-    tagline: "Plug systems together",
-    color: "#2496ed",
-    Icon: FaPlug,
-    tools: [
-      { name: "Binance API" },
-      { name: "Bybit API" },
-      { name: "Stripe" },
-      { name: "REST",    icon: <FaSatelliteDish /> },
-      { name: "GraphQL", icon: <SiGraphql /> },
-      { name: "Webhooks" },
-    ],
-  },
-  {
-    id: "infra",
-    name: "Database & Infra",
-    shortName: "Infra",
-    tagline: "Containers, storage, ops",
-    color: "#14b8a6",
-    Icon: FaDatabase,
-    tools: [
-      { name: "Docker",     icon: <SiDocker /> },
-      { name: "Git",        icon: <SiGit /> },
-      { name: "PostgreSQL", icon: <SiPostgresql /> },
-      { name: "Redis",      icon: <SiRedis /> },
-      { name: "MongoDB",    icon: <SiMongodb /> },
-    ],
-  },
-];
+function toInternal(api: ApiOrbitService): Service {
+  return {
+    id: api.slug,
+    name: api.name,
+    shortName: api.short_name,
+    tagline: api.tagline,
+    color: api.color,
+    Icon: getIcon(api.icon),
+    tools: api.tools.map((t) => {
+      // Tools whose `icon` is null show a 3-letter abbreviation in the UI;
+      // we leave `icon` undefined here so the existing render path uses
+      // the abbreviation fallback.
+      if (!t.icon) return { name: t.name };
+      const ToolIcon = getIcon(t.icon);
+      return { name: t.name, icon: <ToolIcon /> };
+    }),
+  };
+}
+
+// Boring fallback so the hero still renders something if the API is down.
+const FALLBACK_SERVICE: Service = {
+  id: "fallback",
+  name: "Services",
+  shortName: "Services",
+  tagline: "Loading…",
+  color: "#00b7ff",
+  Icon: getIcon("FaCode"),
+  tools: [],
+};
 
 /* ============================================================
  * SCENE CONSTANTS
- *
- *   All positions are in "design pixels" on a 720x720 virtual canvas.
- *   At runtime we measure the real container width and scale 3D offsets
- *   by (actualWidth / SIZE) — lets the whole scene scale fluidly.
  * ============================================================ */
 const SIZE = 720;
 
-// Three intersecting orbit planes for a real 3D feel.
-// tiltDeg rotates the ring around the horizontal (X) axis (top-forward if +).
-// yawDeg rotates the ring around the vertical (Y) axis.
-//
-// Radii were widened ([210, 260, 310] → [240, 285, 325]) so the bigger
-// central hub has ~165 design-px of breathing room before the first ring,
-// which reads as clear visual separation instead of "hub kissing orbit".
-// Outer ring + item chip half-width + hover scale still fits inside the
-// 720-px canvas with a small safety margin.
 const ORBITS: Orbit[] = [
   { radius: 280, speed: 0.70, tiltDeg: 72, yawDeg:   0 }, // Saturn-horizontal
   { radius: 325, speed: 0.46, tiltDeg: 22, yawDeg:  70 }, // near-vertical, yawed
@@ -251,24 +103,6 @@ const ORBITS: Orbit[] = [
  * ============================================================ */
 const degToRad = (d: number) => (d * Math.PI) / 180;
 
-/**
- * Compute the 3D world position of a point on an orbit ring.
- *
- *   Start with a point on a horizontal ring in the XY plane
- *   (the plane that faces the camera):
- *
- *     P_local = ( R·cos θ,  R·sin θ,  0 )
- *
- *   Apply rotateX by tiltDeg  →  tips ring forward/back
- *     y' = y·cos(t) − z·sin(t)
- *     z' = y·sin(t) + z·cos(t)
- *
- *   Apply rotateY by yawDeg  →  spins ring around vertical axis
- *     x'' =  x·cos(y) + z'·sin(y)
- *     z'' = −x·sin(y) + z'·cos(y)
- *
- *   Result is a point in camera-space ready for translate3d.
- */
 function orbitalPosition(
   radius: number,
   angleRad: number,
@@ -294,13 +128,12 @@ function orbitalPosition(
   return { x: x2, y: y1, z: z2 };
 }
 
-/** SSR-safe reduced-motion check */
 const prefersReducedMotion = (): boolean =>
   typeof window !== "undefined" &&
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ============================================================
- * <Starfield /> — deterministic backdrop dots (stable across SSR)
+ * <Starfield /> — deterministic backdrop dots
  * ============================================================ */
 function Starfield() {
   const stars = useMemo(() => {
@@ -336,12 +169,6 @@ function Starfield() {
 
 /* ============================================================
  * <OrbitRing /> — a tilted/yawed elliptical ring in 3D.
- *
- * Implementation: a plain div with `border-radius: 50%` starts as a flat
- * circle facing the camera (XY plane). We apply the orbit's yaw + tilt
- * via CSS 3D transforms — with perspective on the scene the browser
- * projects it as an ellipse automatically. Dashed border + glow shadow
- * gives a clean "orbital track" look.
  * ============================================================ */
 function OrbitRing({ orbit, color }: { orbit: Orbit; color: string }) {
   const pct = ((orbit.radius * 2) / SIZE) * 100;
@@ -362,10 +189,6 @@ function OrbitRing({ orbit, color }: { orbit: Orbit; color: string }) {
 
 /* ============================================================
  * <Tooltip /> — floating label above an orbit item, on hover.
- *
- * Rendered inside the 3D scene next to its parent item — but we apply
- * `transform-style: flat` so the tooltip doesn't tilt with the parent
- * (otherwise the text could be nearly edge-on on the back of an orbit).
  * ============================================================ */
 function Tooltip({ label, color }: { label: string; color: string }) {
   return (
@@ -387,20 +210,6 @@ function Tooltip({ label, color }: { label: string; color: string }) {
 
 /* ============================================================
  * <OrbitItem /> — one tool node orbiting the hub.
- *
- * Structure:
- *   <div ref={positionRef} class="absolute left-1/2 top-1/2">
- *     ← rAF writes translate3d(x, y, z) + opacity onto this div
- *     <div class="-translate-1/2"> ← centers visual on the point
- *       <motion.button animate={scale: hovered?1.25:1}>
- *         <icon/>
- *       </motion.button>
- *       {hovered && <Tooltip/>}
- *     </div>
- *   </div>
- *
- * Separating the rAF-driven translate and the framer-motion scale onto
- * different elements avoids transform conflicts.
  * ============================================================ */
 type OrbitItemProps = {
   tool: Tool;
@@ -408,7 +217,6 @@ type OrbitItemProps = {
   isHovered: boolean;
   onHover: (hovered: boolean) => void;
   innerRef: (el: HTMLDivElement | null) => void;
-  // initial transform prevents a one-frame flash at center before rAF kicks in
   initialPos: { x: number; y: number; z: number };
 };
 
@@ -425,13 +233,11 @@ function OrbitItem({
       ref={innerRef}
       className="absolute left-1/2 top-1/2"
       style={{
-        // Inline initial transform + preserve-3d so child inherits 3D context.
         transform: `translate3d(${initialPos.x}px, ${initialPos.y}px, ${initialPos.z}px)`,
         transformStyle: "preserve-3d",
         willChange: "transform, opacity",
       }}
     >
-      {/* Centering wrapper — places the visible chip's CENTER at the rAF point */}
       <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ transformStyle: "flat" }}>
         <motion.button
           type="button"
@@ -470,10 +276,6 @@ function OrbitItem({
 
 /* ============================================================
  * <ServicesHub /> — the central clickable node.
- *
- * Shows the currently selected service's icon + name. Click toggles the
- * radial selector. Pulsing halo gives it life; gradient disc ties into
- * the site's pink/magenta/cyan palette.
  * ============================================================ */
 function ServicesHub({
   service,
@@ -485,12 +287,7 @@ function ServicesHub({
   onClick: () => void;
 }) {
   const Icon = service.Icon;
-  // Hub container takes ~20.8% of the canvas. Larger than before so the core
-  // reads as a proper focal point, while still leaving a clear gap to the
-  // innermost orbit (now at 240 design-px):
-  //   hub radius  ≈ 75 design-px
-  //   gap to inner orbit ≈ 240 − 75 = 165 design-px of empty space.
-  const hubPct = (150 / SIZE) * 100; // 150/720 ≈ 20.8%
+  const hubPct = (150 / SIZE) * 100;
   return (
     <div
       className="pointer-events-none absolute left-1/2 top-1/2 z-30 flex items-center justify-center"
@@ -500,7 +297,6 @@ function ServicesHub({
         transform: "translate(-50%, -50%)",
       }}
     >
-      {/* Soft bloom */}
       <div
         className="pointer-events-none absolute inset-0 rounded-full"
         style={{
@@ -509,44 +305,21 @@ function ServicesHub({
         }}
       />
 
-      {/* Pulsing ring halo */}
       <motion.div
         className="pointer-events-none absolute inset-[14%] rounded-full border border-white/25"
         animate={{ scale: [1, 1.18, 1], opacity: [0.5, 0.1, 0.5] }}
         transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      {/* Clickable hub — the BUTTON is now the full hub area (rounded-full
-          circle inscribed in the wrapper), while the visible conic-gradient
-          disc + inner core are rendered as pointer-events-none children.
-          Why: previously the button was only 66% wide, but the bloom glow
-          extends across the full hub area, so users see "one big circle" but
-          only the inner 66% was clickable. As the cursor drifted from the
-          visible disc out into the bloom, it toggled pointer↔default — that
-          was the hover flicker. Making the button fill the wrapper gives the
-          whole glowing center a single, consistent hit target.
-          NO `whileHover`: the click-outside catcher (z-[45]) overlays the
-          hub the instant the selector opens, so the hub's `onMouseLeave`
-          fires mid-click and whileHover would release while `animate` is
-          still running — producing a visible scale pop each click.
-          `animate` alone handles the open-state scale cleanly.
-          Similarly, no `rotateZ` on open: a 180° snap during a pointer event
-          just read as flicker rather than polish. */}
       <motion.button
         type="button"
         onClick={onClick}
         animate={{ scale: isOpen ? 1.08 : 1 }}
         transition={{ type: "spring", stiffness: 220, damping: 22 }}
-        // Full hub area = one hit target. `bg-transparent` keeps the circle
-        // invisible; the visible disc is a child div below.
         className="pointer-events-auto absolute inset-0 flex items-center justify-center rounded-full bg-transparent"
         aria-expanded={isOpen}
         aria-label={`Services hub — ${service.name}`}
       >
-        {/* Visible gradient disc — 66% of hub wrapper. pointer-events-none so
-            clicks always go to the button behind/around it (no flicker at the
-            boundary). `transition-[box-shadow]` gives subtle hover feedback
-            via the button's `group`-less `:hover` cascade below. */}
         <div
           className="pointer-events-none relative flex h-[66%] w-[66%] items-center justify-center rounded-full border border-white/20 text-white transition-[box-shadow] duration-200"
           style={{
@@ -558,10 +331,6 @@ function ServicesHub({
             className="flex h-[78%] w-[78%] items-center justify-center rounded-full bg-[#0a0a14]"
             style={{ boxShadow: `inset 0 0 18px ${service.color}77` }}
           >
-            {/* Icon nudged a touch smaller so the inner core feels less "stuffed"
-                and the conic-gradient ring around it has more visual breathing
-                room. `text-xl md:text-2xl` keeps it legible at the hub's current
-                size (150 design-px * 66% inner disc * 78% inner core). */}
             <Icon className="text-xl md:text-2xl" style={{ color: service.color }} />
           </div>
         </div>
@@ -572,35 +341,25 @@ function ServicesHub({
 
 /* ============================================================
  * <ServiceSelector /> — radial menu that expands from the hub.
- *
- * Each service button is placed on a circle of `selectorRadius` at
- * evenly-spaced angles. Scaled from center with staggered delay for a
- * "blooming" feel. Clicking a button collapses the selector and
- * switches the selected service.
  * ============================================================ */
 function ServiceSelector({
+  services,
   isOpen,
   onSelect,
   selectedId,
 }: {
+  services: Service[];
   isOpen: boolean;
   onSelect: (id: string) => void;
   selectedId: string;
 }) {
-  // Radius as a % of the container width. Using % here means the selector
-  // scales with the orbit canvas — important now that it also lives in the
-  // hero side-panel at ~420px instead of 720px.
-  const selectorRadiusPct = 38; // of half the container, so actual offset = 38%
+  const selectorRadiusPct = 38;
 
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
           key="selector"
-          // z-[60] keeps selector above the click-outside catcher (z-[45])
-          // AND above the hub (z-30). Scene's 3D transform establishes a
-          // stacking context, so these internal z's only compete with each
-          // other — the catcher in this same context never hides us.
           className="absolute inset-0 z-[60]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -608,14 +367,10 @@ function ServiceSelector({
           transition={{ duration: 0.2 }}
           aria-label="Service selector"
           role="menu"
-          // transform-style: flat keeps the selector facing the camera even
-          // while the scene tilts from parallax — so clicks always land where
-          // the buttons visually appear.
           style={{ transformStyle: "flat" }}
         >
-          {SERVICES.map((service, i) => {
-            // Distribute services around a circle; -π/2 so first sits at top.
-            const angle = (i / SERVICES.length) * Math.PI * 2 - Math.PI / 2;
+          {services.map((service, i) => {
+            const angle = (i / services.length) * Math.PI * 2 - Math.PI / 2;
             const xPct = selectorRadiusPct * Math.cos(angle);
             const yPct = selectorRadiusPct * Math.sin(angle);
             const isCurrent = service.id === selectedId;
@@ -626,9 +381,6 @@ function ServiceSelector({
                 key={service.id}
                 className="absolute"
                 style={{
-                  // Position anchor in %. `left/top 50%` centers on container;
-                  // xPct/yPct then push outward. Because we go through the
-                  // parent's dimensions, the selector scales automatically.
                   left: `calc(50% + ${xPct}%)`,
                   top: `calc(50% + ${yPct}%)`,
                   transform: "translate(-50%, -50%)",
@@ -648,9 +400,6 @@ function ServiceSelector({
                   }}
                   whileHover={{ scale: 1.14 }}
                   onClick={(e) => {
-                    // Stop propagation so the catcher behind us doesn't also
-                    // swallow the click (defense in depth, even though z order
-                    // should already protect us).
                     e.stopPropagation();
                     onSelect(service.id);
                   }}
@@ -680,32 +429,37 @@ function ServiceSelector({
 }
 
 /* ============================================================
- * <OrbitSystem /> — the 3D scene.
- *
- * Owns:
- *   - service selection state + hover state
- *   - rAF loop for per-frame 3D positioning of items
- *   - container-width measurement for scale factor (ResizeObserver)
- *   - mouse parallax (tilts the scene slightly with cursor)
+ * <OrbitSystem />
  * ============================================================ */
-// Exported so other sections (like Header) can embed the visualization
-// without the surrounding <section>/heading/description.
-export function OrbitSystem() {
+export function OrbitSystem({ services: apiServices }: { services?: ApiOrbitService[] }) {
+  // Convert API shape → internal shape once per render. `useMemo` so we
+  // don't rebuild the icon nodes on every state change inside the scene.
+  const services = useMemo<Service[]>(
+    () =>
+      (apiServices ?? []).length > 0
+        ? (apiServices ?? []).map(toInternal)
+        : [FALLBACK_SERVICE],
+    [apiServices],
+  );
+
   const wrapRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<HTMLDivElement>(null); // parallax target (inner 3D layer)
+  const sceneRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
-
-  // Each tool's current angle along its orbit (mutated every frame).
   const anglesRef = useRef<number[]>([]);
-
-  // Actual pixel scale of the scene relative to SIZE, for rAF math.
   const scaleRef = useRef(1);
 
-  const [selectedId, setSelectedId] = useState<string>(SERVICES[0].id);
+  const [selectedId, setSelectedId] = useState<string>(services[0].id);
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
-  // Refs for rAF to read hover/open without restarting
+  // If services list changes (rare — only on revalidate), make sure the
+  // currently selected id still exists; otherwise fall back to the first.
+  useEffect(() => {
+    if (!services.find((s) => s.id === selectedId)) {
+      setSelectedId(services[0].id);
+    }
+  }, [services, selectedId]);
+
   const hoveredRef = useRef<number | null>(null);
   const selectorOpenRef = useRef(false);
   useEffect(() => {
@@ -716,15 +470,10 @@ export function OrbitSystem() {
   }, [selectorOpen]);
 
   const selectedService = useMemo(
-    () => SERVICES.find((s) => s.id === selectedId) ?? SERVICES[0],
-    [selectedId],
+    () => services.find((s) => s.id === selectedId) ?? services[0],
+    [services, selectedId],
   );
 
-  /* ---------- Distribute the current service's tools across orbits ----------
-     Tools are round-robin'd onto the 3 orbits (tool 0 → orbit 0, 1 → 1, 2 → 2,
-     3 → 0, …). Within each orbit they're then spread evenly around the ring
-     using (indexOnOrbit / totalOnOrbit) * 2π as the phase offset. This
-     guarantees tools don't bunch up regardless of how many there are. */
   const assignments = useMemo(() => {
     const grouped: number[][] = [[], [], []];
     selectedService.tools.forEach((_, i) => {
@@ -740,13 +489,11 @@ export function OrbitSystem() {
     return out;
   }, [selectedService]);
 
-  // Reset angle state whenever the tool set changes (service switched).
   useEffect(() => {
     anglesRef.current = assignments.map((a) => a.phase);
     itemRefs.current = itemRefs.current.slice(0, assignments.length);
   }, [assignments]);
 
-  /* ---------- ResizeObserver → scaleRef ---------- */
   useEffect(() => {
     const el = wrapRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -758,19 +505,17 @@ export function OrbitSystem() {
     return () => ro.disconnect();
   }, []);
 
-  /* ---------- rAF: update each tool's transform ---------- */
   useEffect(() => {
     const reduced = prefersReducedMotion();
     let raf = 0;
     let last = performance.now();
 
     const tick = (now: number) => {
-      // Clamp dt so tab switches don't fling items across full orbits.
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
 
       const scale = scaleRef.current;
-      const paused = selectorOpenRef.current; // whole system calms when picking
+      const paused = selectorOpenRef.current;
 
       assignments.forEach((a, i) => {
         const orbit = ORBITS[a.orbitIdx];
@@ -785,18 +530,11 @@ export function OrbitSystem() {
         const angle = anglesRef.current[i] ?? a.phase;
         const p = orbitalPosition(orbit.radius, angle, orbit.tiltDeg, orbit.yawDeg);
 
-        // Apply the container scale so math that reasons in SIZE-units maps
-        // to the actual pixel scene size.
         const x = p.x * scale;
         const y = p.y * scale;
         const z = p.z * scale;
 
-        // translate3d → browser's perspective projects this naturally, so
-        // items at +z (closer) get larger and -z (farther) get smaller.
         el.style.transform = `translate3d(${x}px, ${y}px, ${z}px)`;
-
-        // Opacity by depth to emphasize the near/far feel.
-        // zNorm in [0,1] where 1 = closest point on this orbit.
         const zNorm = (p.z + orbit.radius) / (2 * orbit.radius);
         el.style.opacity = String(0.35 + 0.65 * zNorm);
       });
@@ -805,13 +543,8 @@ export function OrbitSystem() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-    // Depend on assignments so switching service restarts the loop cleanly.
   }, [assignments]);
 
-  /* ---------- Mouse parallax: tilts the scene (rotateX/Y) ----------
-     Instead of moving the scene in x/y (which would make orbits slide away),
-     we tilt it slightly — so orbits "look at" the cursor. More 3D, less
-     distracting. Max tilt ~6° either direction. */
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const rect = wrapRef.current?.getBoundingClientRect();
     const scene = sceneRef.current;
@@ -829,7 +562,6 @@ export function OrbitSystem() {
     scene.style.setProperty("--tilt-x", "0deg");
   }, []);
 
-  /* ---------- Initial positions passed to each item to avoid a frame-0 flash at center ---------- */
   const initialPositions = useMemo(
     () =>
       assignments.map((a) => {
@@ -840,11 +572,6 @@ export function OrbitSystem() {
   );
 
   return (
-    // Outer wrapper holds both the 3D scene (aspect-square) and the status
-    // label. Pulling the label OUT of the aspect-square means it can't ever
-    // overlap the outer orbit — it just flows below the scene with its own
-    // margin. wrapRef stays on the scene container so the ResizeObserver
-    // measures the correct square for scale math.
     <div className="relative mx-auto w-full max-w-[720px] select-none">
       <div
         ref={wrapRef}
@@ -852,106 +579,89 @@ export function OrbitSystem() {
         onMouseLeave={handleMouseLeave}
         className="relative aspect-square w-full"
         style={{
-          // Perspective makes child translate3d actually feel 3D. Higher value
-          // → flatter look; lower → more exaggerated depth.
           perspective: "1200px",
           perspectiveOrigin: "50% 50%",
         }}
       >
         <Starfield />
 
-      {/* Radial glow behind the scene */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(circle at 50% 50%, rgba(255,0,79,0.10), transparent 55%)",
-        }}
-      />
-
-      {/* 3D scene layer — tilts via CSS vars updated on mousemove. */}
-      <div
-        ref={sceneRef}
-        className="absolute inset-0"
-        style={{
-          transformStyle: "preserve-3d",
-          transform:
-            "rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg))",
-          transition: "transform 0.25s ease-out",
-        }}
-      >
-        {/* Orbit rings (behind the hub) */}
-        {ORBITS.map((o, i) => (
-          <OrbitRing key={i} orbit={o} color={selectedService.color} />
-        ))}
-
-        {/* Click-outside catcher (active only while selector open).
-            Lives INSIDE sceneRef so it participates in the same stacking
-            context as the selector (which sits at z-[60]). It uses z-[45]
-            so it sits above orbit items and the hub but *below* the selector
-            buttons — meaning clicks on the selector buttons hit them, while
-            clicks anywhere else inside the scene close the menu. */}
-        {selectorOpen && (
-          <button
-            type="button"
-            aria-label="Close service selector"
-            onClick={() => setSelectorOpen(false)}
-            className="absolute inset-0 z-[45] cursor-default"
-            style={{ transformStyle: "flat" }}
-          />
-        )}
-
-        {/* Central hub */}
-        <ServicesHub
-          service={selectedService}
-          isOpen={selectorOpen}
-          onClick={() => setSelectorOpen((v) => !v)}
-        />
-
-        {/* Orbiting tools — keyed by service so service-swap triggers
-            unmount/mount via AnimatePresence parent (below). */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={selectedService.id}
-            className="absolute inset-0"
-            style={{ transformStyle: "preserve-3d" }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-          >
-            {selectedService.tools.map((tool, i) => (
-              <OrbitItem
-                key={`${selectedService.id}-${tool.name}-${i}`}
-                tool={tool}
-                color={selectedService.color}
-                isHovered={hoveredIdx === i}
-                onHover={(h) => setHoveredIdx(h ? i : null)}
-                innerRef={(el) => {
-                  itemRefs.current[i] = el;
-                }}
-                initialPos={initialPositions[i] ?? { x: 0, y: 0, z: 0 }}
-              />
-            ))}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Radial selector overlays on top of the scene when open. */}
-        <ServiceSelector
-          isOpen={selectorOpen}
-          selectedId={selectedId}
-          onSelect={(id) => {
-            setSelectedId(id);
-            setSelectorOpen(false);
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 50%, rgba(255,0,79,0.10), transparent 55%)",
           }}
         />
+
+        <div
+          ref={sceneRef}
+          className="absolute inset-0"
+          style={{
+            transformStyle: "preserve-3d",
+            transform:
+              "rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg))",
+            transition: "transform 0.25s ease-out",
+          }}
+        >
+          {ORBITS.map((o, i) => (
+            <OrbitRing key={i} orbit={o} color={selectedService.color} />
+          ))}
+
+          {selectorOpen && (
+            <button
+              type="button"
+              aria-label="Close service selector"
+              onClick={() => setSelectorOpen(false)}
+              className="absolute inset-0 z-[45] cursor-default"
+              style={{ transformStyle: "flat" }}
+            />
+          )}
+
+          <ServicesHub
+            service={selectedService}
+            isOpen={selectorOpen}
+            onClick={() => setSelectorOpen((v) => !v)}
+          />
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={selectedService.id}
+              className="absolute inset-0"
+              style={{ transformStyle: "preserve-3d" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              {selectedService.tools.map((tool, i) => (
+                <OrbitItem
+                  key={`${selectedService.id}-${tool.name}-${i}`}
+                  tool={tool}
+                  color={selectedService.color}
+                  isHovered={hoveredIdx === i}
+                  onHover={(h) => setHoveredIdx(h ? i : null)}
+                  innerRef={(el) => {
+                    itemRefs.current[i] = el;
+                  }}
+                  initialPos={initialPositions[i] ?? { x: 0, y: 0, z: 0 }}
+                />
+              ))}
+            </motion.div>
+          </AnimatePresence>
+
+          <ServiceSelector
+            services={services}
+            isOpen={selectorOpen}
+            selectedId={selectedId}
+            onSelect={(id) => {
+              setSelectedId(id);
+              setSelectorOpen(false);
+            }}
+          />
         </div>
       </div>
 
-      {/* Status label — sits BELOW the aspect-square scene in normal flow,
-          so the outer orbit can never collide with it no matter how wide the
-          orbits get. Margin-top gives it breathing room from the widget. */}
       <div className="mt-6 flex justify-center">
         <AnimatePresence mode="wait">
           <motion.div
@@ -988,10 +698,13 @@ export function OrbitSystem() {
  * <TechMarquee /> — section wrapper. Kept export name stable so
  * app/page.tsx needs no changes.
  * ============================================================ */
-export default function TechMarquee() {
+export default function TechMarquee({
+  services,
+}: {
+  services?: ApiOrbitService[];
+}) {
   return (
     <section className="relative overflow-hidden px-6 py-24 md:px-[10%]">
-      {/* Layered space-like backdrop */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
@@ -1016,7 +729,7 @@ export default function TechMarquee() {
         </div>
 
         <div className="mt-10 md:mt-14">
-          <OrbitSystem />
+          <OrbitSystem services={services} />
         </div>
       </div>
     </section>

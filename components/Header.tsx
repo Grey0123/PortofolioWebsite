@@ -2,9 +2,8 @@
 // Spotlight, OrbitSystem) are their own Client Components, which lets
 // Next.js keep this shell on the server and ship less JS for the static parts.
 //
-// Layout goal: on md+ screens, the hero text and the interactive orbit hub
-// sit side-by-side in a 2-column grid. On mobile they stack (text on top,
-// orbit below). Padding is increased so neither column feels cramped.
+// Data is fetched once in app/page.tsx and passed down as props so each
+// subsection here doesn't have to do its own fetch.
 
 import Navbar from "./Navbar";
 import HeroBackground from "./background/HeroBackground";
@@ -12,14 +11,27 @@ import RotatingRole from "./hero/RotatingRole";
 import Spotlight from "./hero/Spotlight";
 import StatsStrip from "./StatsStrip";
 import { OrbitSystem } from "./TechMarquee";
+import type {
+  ApiOrbitService,
+  ApiRotatingRole,
+  ApiStat,
+} from "@/lib/api";
 
-export default function Header() {
+export default function Header({
+  rotatingRoles = [],
+  stats = [],
+  orbitServices = [],
+}: {
+  rotatingRoles?: ApiRotatingRole[];
+  stats?: ApiStat[];
+  orbitServices?: ApiOrbitService[];
+}) {
+  // RotatingRole only needs the labels, not the wrapper objects.
+  const roleLabels = rotatingRoles.map((r) => r.label);
+
   return (
     <section
       id="home"
-      // `group` enables `group-hover:` utilities on children — Spotlight uses it.
-      // Generous bottom padding so the hero reads comfortably when the orbit
-      // sits beside the text.
       className="group relative w-full overflow-hidden pb-20 md:pb-28"
     >
       <HeroBackground />
@@ -28,15 +40,7 @@ export default function Header() {
       <div className="relative z-10 mx-auto flex w-full max-w-[1400px] flex-col px-6 md:px-[10%]">
         <Navbar />
 
-        {/* Two-column hero:
-            - Left: name, rotating role, CTAs.
-            - Right: OrbitSystem (the interactive 3D services hub).
-            The grid collapses to a single column under `md`. We give the
-            left column `md:col-span-7` and the orbit `md:col-span-5` so the
-            copy gets a bit more horizontal room than the visualization.
-            `gap-12` / `lg:gap-16` gives breathing room between them. */}
         <div className="mt-[14vh] grid grid-cols-1 items-center gap-12 md:mt-[16vh] md:grid-cols-12 lg:gap-16">
-          {/* ── LEFT COLUMN ── */}
           <div className="md:col-span-7">
             <p className="text-sm uppercase tracking-[0.35em] text-muted">
               Portfolio · Indonesia
@@ -47,9 +51,8 @@ export default function Header() {
               <span className="gradient-text">Nabil</span>
             </h1>
 
-            {/* Second line: fixed prefix + rotating role */}
             <p className="mt-4 text-2xl font-medium md:text-3xl lg:text-4xl">
-              I&apos;m a <RotatingRole />
+              I&apos;m a <RotatingRole roles={roleLabels} />
             </p>
 
             <p className="mt-6 max-w-xl text-base text-muted md:text-lg">
@@ -74,15 +77,9 @@ export default function Header() {
             </div>
           </div>
 
-          {/* ── RIGHT COLUMN: interactive orbit hub ──
-              Max-width caps the orbit so it never dominates the hero, and
-              `mx-auto` centers it in the column on mobile. */}
           <div className="md:col-span-5">
             <div className="relative mx-auto w-full max-w-[520px] md:max-w-none">
-              <OrbitSystem />
-              {/* Caption sits BELOW the orbit with generous top margin so it
-                  has visible breathing room from the outermost orbit ring —
-                  the widget should feel finished before the words start. */}
+              <OrbitSystem services={orbitServices} />
               <p className="mt-8 text-center text-xs uppercase tracking-[0.3em] text-muted md:mt-10">
                 <span className="text-accent">●</span> Click the core to
                 explore services
@@ -91,9 +88,8 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Stats strip lives below the two-column hero. */}
         <div className="mt-16 md:mt-20">
-          <StatsStrip />
+          <StatsStrip stats={stats} />
         </div>
       </div>
     </section>

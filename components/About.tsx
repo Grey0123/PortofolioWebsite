@@ -3,51 +3,10 @@
 import Image from "next/image";
 import { useState } from "react";
 import SectionAura from "./background/SectionAura";
+import type { ApiSkill, ApiTimelineItem } from "@/lib/api";
 
-// A literal union type: `TabKey` can only be one of these three strings. TS
-// will flag typos. Great safety net.
+// Tab keys — kept as a literal union so a typo elsewhere is a TS error.
 type TabKey = "skills" | "experience" | "education";
-
-type SkillItem = { title: string; detail: string };
-type TimelineItem = {
-  period: string;
-  title: string;
-  org: string;
-  detail: string;
-};
-
-const SKILLS: SkillItem[] = [
-  { title: "Data Analyst", detail: "Designing dashboards & analyzing key data points" },
-  { title: "Quality Assurance", detail: "Automation frameworks, CI pipelines, DB verification" },
-  { title: "Artificial Intelligence", detail: "Models, recommendations, intelligent systems" },
-  { title: "Web Design", detail: "UI/UX for web and mobile apps" },
-];
-
-const EXPERIENCE: TimelineItem[] = [
-  {
-    period: "2024 – 2025",
-    title: "Java Developer · Data Analytics · Business Analyst",
-    org: "Cygnet Pericon",
-    detail:
-      "Multi-hat role spanning Java services, analytics work, and business analysis. Designed queries and reporting pipelines alongside product-facing work.",
-  },
-  {
-    period: "2023 – 2024",
-    title: "Software Engineer in Test",
-    org: "Blibli.com",
-    detail:
-      "Built robust automation with Selenium, Cucumber, and Playwright (Java). Contributed to a parallel Jenkins pipeline and DB-verification layer for e-commerce flows.",
-  },
-];
-
-const EDUCATION: TimelineItem[] = [
-  {
-    period: "2020 – 2023",
-    title: "Bachelor of Computer Science",
-    org: "Bina Nusantara University",
-    detail: "Focus on software engineering, data structures, and intelligent systems.",
-  },
-];
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "skills", label: "Skills" },
@@ -56,12 +15,11 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 /* ----------------------- TIMELINE SUBCOMPONENT ---------------------- */
-function Timeline({ items }: { items: TimelineItem[] }) {
+function Timeline({ items }: { items: ApiTimelineItem[] }) {
   return (
     <ol className="relative ml-4 mt-6 space-y-8 border-l border-white/10 pl-8">
       {items.map((item, i) => (
         <li key={i} className="relative">
-          {/* Dot on the timeline */}
           <span className="absolute -left-[33px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-accent bg-ink">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" />
           </span>
@@ -82,7 +40,7 @@ function Timeline({ items }: { items: TimelineItem[] }) {
 }
 
 /* ----------------------- SKILLS SUBCOMPONENT ------------------------ */
-function SkillsGrid({ items }: { items: SkillItem[] }) {
+function SkillsGrid({ items }: { items: ApiSkill[] }) {
   return (
     <div className="mt-6 grid gap-4 sm:grid-cols-2">
       {items.map((item) => (
@@ -99,12 +57,22 @@ function SkillsGrid({ items }: { items: SkillItem[] }) {
 }
 
 /* ----------------------- MAIN COMPONENT ----------------------------- */
-export default function About() {
+// Props provided by the parent server component (app/page.tsx), which
+// fetches the /content bundle and slices it down to what each section
+// actually needs.
+export default function About({
+  skills = [],
+  experience = [],
+  education = [],
+}: {
+  skills?: ApiSkill[];
+  experience?: ApiTimelineItem[];
+  education?: ApiTimelineItem[];
+}) {
   const [active, setActive] = useState<TabKey>("skills");
 
   return (
     <section id="about" className="relative overflow-hidden px-6 py-24 md:px-[10%]">
-      {/* Thematic accent — cyan top-left to echo the hero aurora. */}
       <SectionAura color="cyan" position="top-left" />
       <div className="mx-auto flex max-w-[1400px] flex-col gap-12 md:flex-row md:items-start">
         <div className="md:basis-[35%]">
@@ -153,11 +121,9 @@ export default function About() {
             ))}
           </div>
 
-          {/* Swap the body based on active tab. Because this is the only piece
-              that changes, React only re-renders this subtree. */}
-          {active === "skills" && <SkillsGrid items={SKILLS} />}
-          {active === "experience" && <Timeline items={EXPERIENCE} />}
-          {active === "education" && <Timeline items={EDUCATION} />}
+          {active === "skills" && <SkillsGrid items={skills} />}
+          {active === "experience" && <Timeline items={experience} />}
+          {active === "education" && <Timeline items={education} />}
         </div>
       </div>
     </section>
