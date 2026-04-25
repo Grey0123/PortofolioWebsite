@@ -28,8 +28,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (contain secrets)
+# env files (contain secrets) — ignore every variant by default, but
+# keep the example template committed so other devs (including future-you)
+# know which vars to set. The template never holds real secrets.
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -37,3 +40,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# agent skills
+.agents/*
+.claude/*
+
+# python (FastAPI backend in /api)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
