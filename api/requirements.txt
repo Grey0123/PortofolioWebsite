@@ -7,6 +7,7 @@
 fastapi==0.115.0          # the web framework
 uvicorn[standard]==0.30.6 # ASGI server with reload, websockets, etc.
 pydantic==2.9.2           # request/response validation (already a fastapi dep, pinned for clarity)
+email-validator==2.2.0    # required by pydantic EmailStr (used in schemas.MessageIn)
 supabase>=2.15.0          # official Python client for Supabase
                           # >=2.15 needed to accept new sb_secret_/sb_publishable_ key format
 python-dotenv==1.0.1      # load .env file in dev
