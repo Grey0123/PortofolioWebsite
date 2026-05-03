@@ -23,7 +23,10 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
+from limiter import limiter
 from routers import content, messages, works
 
 
@@ -42,6 +45,17 @@ app = FastAPI(
         "to the frontend that doesn't change when we tweak DB schema."
     ),
 )
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+# slowapi expects the Limiter to be on app.state.limiter so its middleware
+# can find it. The exception handler turns RateLimitExceeded into a tidy
+# 429 Too Many Requests response (with a `Retry-After` header) instead of
+# leaking a stack trace.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 # ---------------------------------------------------------------------------

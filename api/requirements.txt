@@ -12,3 +12,4 @@ supabase>=2.15.0          # official Python client for Supabase
                           # >=2.15 needed to accept new sb_secret_/sb_publishable_ key format
 python-dotenv==1.0.1      # load .env file in dev
 httpx==0.27.2             # used internally by supabase, pinned to avoid accidental breaks
+slowapi==0.1.9            # per-IP rate limiting on the contact form endpoint
