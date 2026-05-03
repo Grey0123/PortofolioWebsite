@@ -121,6 +121,27 @@ class OrbitService(BaseModel):
     tools: list[OrbitTool]
 
 
+class CandidPhoto(BaseModel):
+    """Row from `candid_photos` — feeds the carousel in the About section."""
+
+    image_path: str
+    alt: str
+    # CSS object-position for the square crop, e.g. "30% center". Optional;
+    # the frontend defaults to "center" when missing.
+    position: Optional[str] = None
+
+
+class Place(BaseModel):
+    """Row from `places` — feeds the bento grid in the Travel section."""
+
+    image_path: str
+    place: str
+    caption: str
+    # Tailwind grid placement string, e.g. "md:col-span-2 md:row-span-2".
+    # Nullable — when missing the tile takes the default 1x1 size.
+    span: Optional[str] = None
+
+
 class ContentBundle(BaseModel):
     """
     Single response that bundles ALL static content.
@@ -142,3 +163,7 @@ class ContentBundle(BaseModel):
     contact_info: Optional[ContactInfo]
     social_links: list[SocialLink]
     orbit_services: list[OrbitService]
+    # Default to empty lists so the bundle still validates while the gallery
+    # tables are empty / not yet seeded — the frontend has fallback content.
+    candid_photos: list[CandidPhoto] = []
+    places: list[Place] = []

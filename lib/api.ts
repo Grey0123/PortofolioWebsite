@@ -85,6 +85,21 @@ export type ApiOrbitService = {
   tools: ApiOrbitTool[];
 };
 
+export type ApiCandidPhoto = {
+  image_path: string;
+  alt: string;
+  // CSS object-position for the square crop (e.g. "30% center"). Optional.
+  position?: string | null;
+};
+
+export type ApiPlace = {
+  image_path: string;
+  place: string;
+  caption: string;
+  // Tailwind grid placement string for the bento layout. Optional.
+  span?: string | null;
+};
+
 export type ApiContentBundle = {
   rotating_roles: ApiRotatingRole[];
   stats: ApiStat[];
@@ -95,6 +110,8 @@ export type ApiContentBundle = {
   contact_info: ApiContactInfo | null;
   social_links: ApiSocialLink[];
   orbit_services: ApiOrbitService[];
+  candid_photos: ApiCandidPhoto[];
+  places: ApiPlace[];
 };
 
 /* ------------------------------------------------------------------
@@ -140,6 +157,8 @@ const EMPTY_BUNDLE: ApiContentBundle = {
   contact_info: null,
   social_links: [],
   orbit_services: [],
+  candid_photos: [],
+  places: [],
 };
 
 export async function fetchContent(): Promise<ApiContentBundle> {

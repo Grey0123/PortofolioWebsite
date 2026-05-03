@@ -1,9 +1,33 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import SectionAura from "./background/SectionAura";
-import type { ApiSkill, ApiTimelineItem } from "@/lib/api";
+import CandidCarousel, { type CandidSlide } from "./CandidCarousel";
+import type { ApiCandidPhoto, ApiSkill, ApiTimelineItem } from "@/lib/api";
+
+// Used only when the API hasn't delivered any candid photos yet (DB not
+// seeded, backend down). Once `candid_photos` rows exist in Supabase, the
+// real data takes over and this list is ignored.
+const FALLBACK_CANDID_SLIDES: CandidSlide[] = [
+  { src: "/images/profile.png", alt: "Nabil portrait" },
+  {
+    src: "/images/candid/candid-1.png",
+    alt: "Candid moment of Nabil",
+    // 16:9 photo with subject on the left third — pull the crop left so
+    // his face stays in the square frame instead of being cropped out.
+    position: "30% center",
+  },
+];
+
+// Adapter: API rows use `image_path` and nullable `position`. Convert into
+// the local CandidSlide shape the carousel component already understands.
+function toSlides(rows: ApiCandidPhoto[]): CandidSlide[] {
+  return rows.map((r) => ({
+    src: r.image_path,
+    alt: r.alt,
+    position: r.position ?? undefined,
+  }));
+}
 
 // Tab keys — kept as a literal union so a typo elsewhere is a TS error.
 type TabKey = "skills" | "experience" | "education";
@@ -64,27 +88,26 @@ export default function About({
   skills = [],
   experience = [],
   education = [],
+  candidPhotos = [],
 }: {
   skills?: ApiSkill[];
   experience?: ApiTimelineItem[];
   education?: ApiTimelineItem[];
+  candidPhotos?: ApiCandidPhoto[];
 }) {
   const [active, setActive] = useState<TabKey>("skills");
+
+  // Pick API data when present, otherwise the fallback. This keeps the
+  // section useful before the gallery tables have been seeded.
+  const slides =
+    candidPhotos.length > 0 ? toSlides(candidPhotos) : FALLBACK_CANDID_SLIDES;
 
   return (
     <section id="about" className="relative overflow-hidden px-6 py-24 md:px-[10%]">
       <SectionAura color="cyan" position="top-left" />
       <div className="mx-auto flex max-w-[1400px] flex-col gap-12 md:flex-row md:items-start">
         <div className="md:basis-[35%]">
-          <div className="relative aspect-square overflow-hidden rounded-2xl border border-white/10">
-            <Image
-              src="/images/profile.png"
-              alt="Nabil portrait"
-              fill
-              sizes="(max-width: 768px) 100vw, 35vw"
-              className="object-cover"
-            />
-          </div>
+          <CandidCarousel slides={slides} />
         </div>
 
         <div className="md:basis-[60%]">

@@ -244,3 +244,54 @@ ALTER TABLE public.orbit_tools ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "orbit_tools_public_read" ON public.orbit_tools;
 CREATE POLICY "orbit_tools_public_read"
   ON public.orbit_tools FOR SELECT TO anon, authenticated USING (true);
+
+
+-- =========================================================================
+-- ABOUT: candid carousel photos
+--   Why a separate table from the formal portrait? The portrait is one
+--   fixed asset; candids are a growing list with their own ordering and
+--   per-photo focal point. Putting candids in a table means adding new
+--   ones is an INSERT, not a code change.
+--
+--   `image_path`  = a path under /public, e.g. "/images/candid/candid-1.jpg".
+--                   Migrate to a Supabase Storage URL later if you want a
+--                   non-coder upload UI.
+--   `position`    = CSS object-position for the square crop frame, e.g.
+--                   "30% center". NULL means default ("center").
+-- =========================================================================
+CREATE TABLE IF NOT EXISTS public.candid_photos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  image_path text NOT NULL,
+  alt text NOT NULL,
+  position text,
+  sort_order integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.candid_photos ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "candid_photos_public_read" ON public.candid_photos;
+CREATE POLICY "candid_photos_public_read"
+  ON public.candid_photos FOR SELECT TO anon, authenticated USING (true);
+
+
+-- =========================================================================
+-- TRAVEL: places bento grid
+--   `span` is the Tailwind grid placement string for the bento layout
+--   (e.g. "md:col-span-2 md:row-span-2"). NULL means default 1x1 tile.
+--   Storing this in the DB lets you re-arrange the bento layout from the
+--   dashboard without redeploying — handy as you add or remove photos.
+-- =========================================================================
+CREATE TABLE IF NOT EXISTS public.places (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  image_path text NOT NULL,
+  place text NOT NULL,
+  caption text NOT NULL,
+  span text,
+  sort_order integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.places ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "places_public_read" ON public.places;
+CREATE POLICY "places_public_read"
+  ON public.places FOR SELECT TO anon, authenticated USING (true);

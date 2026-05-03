@@ -20,10 +20,12 @@ from supabase import Client
 
 from db import get_supabase
 from schemas import (
+    CandidPhoto,
     ContactInfo,
     ContentBundle,
     OrbitService,
     OrbitTool,
+    Place,
     RotatingRole,
     Service,
     Skill,
@@ -49,6 +51,28 @@ def _ordered(supabase: Client, table: str, *order_cols: str) -> list[dict[str, A
     return query.execute().data or []
 
 
+def _ordered_safe(
+    supabase: Client, table: str, *order_cols: str
+) -> list[dict[str, Any]]:
+    """
+    Same as _ordered, but returns [] instead of raising if the table is
+    missing or any other error occurs.
+
+    Use this for tables that were added later in the project's life — that
+    way the rest of the bundle still loads while a developer is partway
+    through running new migrations. The full _ordered (which propagates
+    errors) is still right for tables that have been around since day one
+    and whose absence indicates real database breakage.
+    """
+    try:
+        return _ordered(supabase, table, *order_cols)
+    except Exception as exc:  # noqa: BLE001  — narrowest sensible scope here
+        # Print to the API console so the developer notices, but don't
+        # raise — the bundle should still render with empty gallery data.
+        print(f"[content] {table} read failed, returning []: {exc}")
+        return []
+
+
 # ---- main endpoint --------------------------------------------------------
 
 @router.get("", response_model=ContentBundle)
@@ -62,6 +86,10 @@ def get_content_bundle(supabase: Client = Depends(get_supabase)) -> ContentBundl
         social_links   = _ordered(supabase, "social_links", "sort_order")
         orbit_services = _ordered(supabase, "orbit_services", "sort_order")
         orbit_tools    = _ordered(supabase, "orbit_tools", "orbit_service_id", "sort_order")
+        # Newer tables — use the safe variant so a partly-applied migration
+        # doesn't 502 the whole bundle. See _ordered_safe docstring.
+        candid_photos  = _ordered_safe(supabase, "candid_photos", "sort_order")
+        places         = _ordered_safe(supabase, "places", "sort_order")
 
         # contact_info is a single-row table; .single() raises if 0 or >1
         # rows exist, so we use .limit(1) and pick the first instead — that
@@ -110,4 +138,23 @@ def get_content_bundle(supabase: Client = Depends(get_supabase)) -> ContentBundl
         contact_info=ContactInfo(**contact_info) if contact_info else None,
         social_links=[SocialLink(**l) for l in social_links],
         orbit_services=orbit_payload,
+        # Pydantic does the field mapping by name — DB columns happen to
+        # match the schema fields exactly (image_path, alt, position, etc.).
+        candid_photos=[
+            CandidPhoto(
+                image_path=p["image_path"],
+                alt=p["alt"],
+                position=p.get("position"),
+            )
+            for p in candid_photos
+        ],
+        places=[
+            Place(
+                image_path=p["image_path"],
+                place=p["place"],
+                caption=p["caption"],
+                span=p.get("span"),
+            )
+            for p in places
+        ],
     )

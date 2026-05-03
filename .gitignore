@@ -53,3 +53,7 @@ __pycache__/
 venv/
 *.egg-info/
 .pytest_cache/
+
+# images (raw/source assets — processed copies live in public/images/)
+/images/
+.images/*

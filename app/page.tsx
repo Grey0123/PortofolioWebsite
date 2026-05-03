@@ -42,6 +42,7 @@ export default async function HomePage() {
           skills={content.skills}
           experience={content.experience}
           education={content.education}
+          candidPhotos={content.candid_photos}
         />
       </FadeInSection>
 
@@ -54,7 +55,7 @@ export default async function HomePage() {
       </FadeInSection>
 
       <FadeInSection>
-        <Travel />
+        <Travel places={content.places} />
       </FadeInSection>
 
       <FadeInSection>
