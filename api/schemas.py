@@ -24,12 +24,31 @@ from pydantic import BaseModel, EmailStr, Field
 
 
 # =============================================================
+# CATEGORIES (filter chips for the portfolio grid)
+# =============================================================
+class Category(BaseModel):
+    """
+    A project category, now stored in the `categories` table so it can be
+    edited from the Supabase dashboard. `icon` is a react-icons NAME (e.g.
+    "FaDatabase") that the frontend resolves via lib/icons.ts.
+    """
+
+    id: str
+    label: str
+    color: str
+    icon: str
+
+
+# =============================================================
 # WORKS (portfolio projects)
 # =============================================================
 class Work(BaseModel):
     title: str
     description: str
-    category: Literal["data", "automation", "ai", "web", "analytics"]
+    # Was a Literal of five fixed strings. It's now a free `str` because the
+    # valid set lives in the `categories` table — the DB foreign key (not
+    # this schema) is what enforces that the value is a real category.
+    category: str
     tech: list[str]
     year: int
     image: Optional[str] = None
@@ -155,6 +174,10 @@ class ContentBundle(BaseModel):
     """
 
     rotating_roles: list[RotatingRole]
+    # Editable project categories — drive the portfolio filter chips. Default
+    # to [] so the bundle still validates on a DB that predates the categories
+    # table (the frontend falls back to its built-in list in that case).
+    categories: list[Category] = []
     stats: list[Stat]
     skills: list[Skill]
     experience: list[TimelineItem]

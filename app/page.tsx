@@ -51,7 +51,9 @@ export default async function HomePage() {
       </FadeInSection>
 
       <FadeInSection>
-        <Portfolio />
+        {/* Portfolio fetches its own /works list, but categories ride along
+            in the /content bundle we already fetched above. */}
+        <Portfolio categories={content.categories} />
       </FadeInSection>
 
       <FadeInSection>

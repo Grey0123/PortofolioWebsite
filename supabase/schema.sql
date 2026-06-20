@@ -23,15 +23,39 @@
 -- =========================================================================
 
 -- -------------------------------------------------------------------------
+-- Table: categories
+-- -------------------------------------------------------------------------
+-- The set of valid project categories, editable from the dashboard. `id` is
+-- the slug stored on works.category; `icon` is a react-icons NAME resolved
+-- on the frontend via lib/icons.ts (same pattern as stats/services). Defined
+-- BEFORE works because works.category foreign-keys into it.
+-- (See supabase/migrations/2026-06-20_categories.sql for the migration that
+--  introduced this on the already-live database.)
+CREATE TABLE IF NOT EXISTS public.categories (
+  id         text PRIMARY KEY,
+  label      text NOT NULL,
+  color      text NOT NULL,
+  icon       text NOT NULL,
+  sort_order integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "categories_public_read" ON public.categories;
+CREATE POLICY "categories_public_read"
+  ON public.categories FOR SELECT TO anon, authenticated USING (true);
+
+-- -------------------------------------------------------------------------
 -- Table: works
 -- -------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.works (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title text NOT NULL,
   description text NOT NULL,
-  category text NOT NULL CHECK (
-    category IN ('data', 'automation', 'ai', 'web', 'analytics')
-  ),
+  -- FK into categories (was an inline CHECK of fixed strings). Validity is
+  -- now data-driven: any seeded category id is allowed, nothing else.
+  category text NOT NULL REFERENCES public.categories(id)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
   tech text[] NOT NULL DEFAULT ARRAY[]::text[],
   year integer NOT NULL,
   image text,

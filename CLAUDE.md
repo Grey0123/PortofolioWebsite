@@ -196,10 +196,11 @@ NOT `localhost`.
 - **Render free tier sleeps after 15 min idle.** First request after
   sleep takes 30–60s. Acceptable for a portfolio. Uptime pinger or
   paid tier if it becomes annoying.
-- **OneDrive + git is dangerous.** Repo lives in `OneDrive\Documents\
-  Github\PortofolioWebsite`. OneDrive sync has corrupted `.git/index`
-  before — recovery is `del .git\index && git reset`. Long-term fix:
-  move the repo out of OneDrive.
+- **Repo location: `C:\Github\PortofolioWebsite` (NOT in OneDrive).**
+  It used to live under `OneDrive\Documents\Github\` where OneDrive sync
+  corrupted `.git/index` (recovery was `del .git\index && git reset`).
+  It has since been moved to the drive root `C:\Github` to avoid that —
+  don't move it back under OneDrive.
 - **Supabase migrated to new `sb_publishable_…` / `sb_secret_…` key
   format.** supabase-py 2.8.x rejects these via regex; require >=2.15.
 - **Python 3.14 on Render breaks builds** because pydantic-core has no
@@ -211,6 +212,13 @@ NOT `localhost`.
 - **`AnimatePresence` `mode="popLayout"` + `LayoutGroup` strands cards
   at opacity 0** when filters toggle quickly. PortfolioClient now uses
   default sync mode — don't reintroduce popLayout there.
+- **Never resolve icon names to components on the server and pass them to
+  a Client Component.** A react-icons component is a function, and
+  functions can't cross the Server→Client boundary (Next serializes props
+  as JSON → "Functions cannot be passed directly to Client Components").
+  Pass the icon NAME string across the boundary and call `getIcon()` in
+  the client. PortfolioClient does this: the server hands it raw
+  `ApiCategory[]` (icon as string) and it resolves to `Category[]` itself.
 - **Supabase relative imports break uvicorn.** Routers in `api/routers/`
   use absolute imports (`from db import ...`, `from schemas import ...`),
   not relative (`from ..db import ...`), because uvicorn loads
@@ -229,8 +237,8 @@ NOT `localhost`.
 - Don't write to Supabase from the browser. Even with anon-key + RLS,
   the FastAPI layer is the contract — go through it.
 - Don't `git add .` or `git add -A`. Always specify files. The repo
-  has had OneDrive-induced index corruption; broad adds risk staging
-  garbage.
+  has a history of index corruption (from its former OneDrive location);
+  broad adds risk staging garbage.
 - Don't hand-edit migrations after they've been run in prod. Add a new
   SQL file with the change instead.
 - Don't bypass GitHub push protection. If it flags a secret, the secret

@@ -9,6 +9,16 @@
 -- Either way, the portfolio grid updates automatically on the next page load.
 -- =========================================================================
 
+-- Categories must exist before works (works.category is a FK into them).
+-- Add a new category here (or in the dashboard) and it becomes a filter chip.
+INSERT INTO public.categories (id, label, color, icon, sort_order) VALUES
+  ('data',       'Data Engineering', '#00b7ff', 'FaDatabase',  1),
+  ('automation', 'Automation',       '#ff30ff', 'FaRobot',     2),
+  ('ai',         'AI / ML',          '#ffa94d', 'FaBrain',     3),
+  ('analytics',  'Analytics',        '#9d7bff', 'FaChartLine', 4),
+  ('web',        'Web',              '#ff004f', 'FaCode',      5)
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO public.works (title, description, category, tech, year, image, featured)
 VALUES
   (

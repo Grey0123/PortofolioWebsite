@@ -6,37 +6,30 @@
 // labels) so the UI doesn't need a round-trip to render chips.
 
 import type { IconType } from "react-icons";
-import {
-  FaDatabase,
-  FaRobot,
-  FaBrain,
-  FaCode,
-  FaChartLine,
-} from "react-icons/fa";
-import type { ApiWork } from "./api";
+import { FaCode } from "react-icons/fa";
+import type { ApiCategory, ApiWork } from "./api";
+import { getIcon } from "./icons";
 
 /* ------------------------------------------------------------------
  * Categories
  * ------------------------------------------------------------------
  * Each project belongs to exactly one category. Categories drive the
- * filter chips at the top of the section. If you add a new one, update
- * THREE places in lockstep:
- *   1. `CategoryId` union below
- *   2. `CATEGORIES` array below
- *   3. The CHECK constraint on the `works.category` column in
- *      supabase/schema.sql (and run it against the live DB).
+ * filter chips at the top of the section.
  *
+ * Categories now live in the `categories` table in Supabase, fetched as
+ * part of the /content bundle. To ADD one, insert a row in the dashboard
+ * (id, label, color, icon) — no code change, no redeploy. The `icon`
+ * column stores a react-icons NAME ("FaDatabase") which getIcon() resolves
+ * to a component; if the name isn't in lib/icons.ts the chip shows FaCode.
+ *
+ * `CategoryId` / `FilterId` are now plain strings (the DB foreign key,
+ * not the TypeScript compiler, is what guarantees a category is valid).
  * The "all" pseudo-category is only used by the filter UI — no project
  * should ever carry it.
  */
-export type CategoryId =
-  | "data"
-  | "automation"
-  | "ai"
-  | "web"
-  | "analytics";
+export type CategoryId = string;
 
-export type FilterId = "all" | CategoryId;
+export type FilterId = string; // "all" | <category id>
 
 export type Category = {
   id: CategoryId;
@@ -45,18 +38,44 @@ export type Category = {
   Icon: IconType;
 };
 
-export const CATEGORIES: Category[] = [
-  { id: "data",       label: "Data Engineering", color: "#00b7ff", Icon: FaDatabase },
-  { id: "automation", label: "Automation",       color: "#ff30ff", Icon: FaRobot },
-  { id: "ai",         label: "AI / ML",          color: "#ffa94d", Icon: FaBrain },
-  { id: "analytics",  label: "Analytics",        color: "#9d7bff", Icon: FaChartLine },
-  { id: "web",        label: "Web",              color: "#ff004f", Icon: FaCode },
+/**
+ * Fallback list used only when the API returns no categories — e.g. before
+ * the categories migration has run, or if the backend is unreachable. Keeps
+ * the filter bar populated instead of collapsing to just "All". Mirrors the
+ * original hardcoded set.
+ */
+export const FALLBACK_CATEGORIES: Category[] = [
+  { id: "data",       label: "Data Engineering", color: "#00b7ff", Icon: getIcon("FaDatabase") },
+  { id: "automation", label: "Automation",       color: "#ff30ff", Icon: getIcon("FaRobot") },
+  { id: "ai",         label: "AI / ML",          color: "#ffa94d", Icon: getIcon("FaBrain") },
+  { id: "analytics",  label: "Analytics",        color: "#9d7bff", Icon: getIcon("FaChartLine") },
+  { id: "web",        label: "Web",              color: "#ff004f", Icon: getIcon("FaCode") },
 ];
 
-export function getCategory(id: CategoryId): Category {
-  const found = CATEGORIES.find((c) => c.id === id);
-  return found ?? CATEGORIES[0];
+// Neutral fallback for a work whose category id matches no known category
+// (e.g. a category was deleted out from under existing rows).
+const UNKNOWN_CATEGORY: Category = {
+  id: "unknown",
+  label: "Other",
+  color: "#8a8a99",
+  Icon: FaCode,
+};
+
+/** Convert an ApiCategory (string icon name) into the UI Category (component). */
+export function toCategory(api: ApiCategory): Category {
+  return {
+    id: api.id,
+    label: api.label,
+    color: api.color,
+    Icon: getIcon(api.icon),
+  };
 }
+
+/** Resolve a category by id against a list, with a safe fallback. */
+export function getCategory(id: CategoryId, categories: Category[]): Category {
+  return categories.find((c) => c.id === id) ?? UNKNOWN_CATEGORY;
+}
+// getCategory now takes the (DB-driven) category list as its second arg.
 
 /* ------------------------------------------------------------------
  * Work view-model

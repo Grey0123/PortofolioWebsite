@@ -11,9 +11,12 @@ import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { FaExternalLinkAlt, FaGithub, FaStar } from "react-icons/fa";
 import type { IconType } from "react-icons";
 
+import type { ApiCategory } from "@/lib/api";
 import {
-  CATEGORIES,
+  FALLBACK_CATEGORIES,
   getCategory,
+  toCategory,
+  type Category,
   type FilterId,
   type Work,
 } from "@/lib/works";
@@ -29,23 +32,37 @@ import {
  *
  * Pure presentation — knows nothing about Supabase or network.
  * ========================================================================= */
-export default function PortfolioClient({ works }: { works: Work[] }) {
+export default function PortfolioClient({
+  works,
+  categories: apiCategories,
+}: {
+  works: Work[];
+  categories: ApiCategory[];
+}) {
   const [active, setActive] = useState<FilterId>("all");
 
+  // Resolve the wire-format categories (icon as a string name) into the UI
+  // view-model (icon as a react-icons component) HERE, in the client bundle.
+  // This is the right side of the Server→Client boundary to call getIcon()
+  // on — the component functions never have to be serialized. Falls back to
+  // the built-in list when the API returned nothing (DB not migrated, or
+  // backend unreachable) so the filter bar never collapses to just "All".
+  const categories = useMemo<Category[]>(
+    () =>
+      apiCategories.length > 0 ? apiCategories.map(toCategory) : FALLBACK_CATEGORIES,
+    [apiCategories]
+  );
+
   // Per-category counts — shown as a subscript on each chip so the user
-  // can tell at a glance how many projects live under each filter.
+  // can tell at a glance how many projects live under each filter. Built
+  // dynamically from the (DB-driven) category list rather than a hardcoded
+  // record, so a new category automatically gets its own counter.
   const counts = useMemo(() => {
-    const map: Record<FilterId, number> = {
-      all: works.length,
-      data: 0,
-      automation: 0,
-      ai: 0,
-      web: 0,
-      analytics: 0,
-    };
-    for (const w of works) map[w.category] += 1;
+    const map: Record<FilterId, number> = { all: works.length };
+    for (const c of categories) map[c.id] = 0;
+    for (const w of works) map[w.category] = (map[w.category] ?? 0) + 1;
     return map;
-  }, [works]);
+  }, [works, categories]);
 
   // Filtered list of works. Memoized so we don't reallocate on unrelated
   // re-renders.
@@ -73,7 +90,12 @@ export default function PortfolioClient({ works }: { works: Work[] }) {
       </div>
 
       {/* ---------- Filter pills ---------- */}
-      <FilterBar active={active} onChange={setActive} counts={counts} />
+      <FilterBar
+        active={active}
+        onChange={setActive}
+        counts={counts}
+        categories={categories}
+      />
 
       {/* ---------- Grid ----------
           LayoutGroup lets cards animate into their new positions smoothly
@@ -94,7 +116,11 @@ export default function PortfolioClient({ works }: { works: Work[] }) {
         >
           <AnimatePresence>
             {visible.map((work) => (
-              <WorkCard key={work.title} work={work} />
+              <WorkCard
+                key={work.title}
+                work={work}
+                category={getCategory(work.category, categories)}
+              />
             ))}
           </AnimatePresence>
         </motion.div>
@@ -106,7 +132,7 @@ export default function PortfolioClient({ works }: { works: Work[] }) {
           <p className="text-lg">
             {works.length === 0
               ? "No projects in the database yet — add a row to `works` in Supabase to see it appear here."
-              : `Nothing here yet — new ${getCategory(active as Exclude<FilterId, "all">).label.toLowerCase()} work is on the way.`}
+              : `Nothing here yet — new ${getCategory(active, categories).label.toLowerCase()} work is on the way.`}
           </p>
           {works.length > 0 && (
             <button
@@ -129,10 +155,12 @@ function FilterBar({
   active,
   onChange,
   counts,
+  categories,
 }: {
   active: FilterId;
   onChange: (id: FilterId) => void;
   counts: Record<FilterId, number>;
+  categories: Category[];
 }) {
   return (
     <div
@@ -147,7 +175,7 @@ function FilterBar({
         active={active === "all"}
         onClick={() => onChange("all")}
       />
-      {CATEGORIES.map((c) => (
+      {categories.map((c) => (
         <FilterChip
           key={c.id}
           id={c.id}
@@ -221,8 +249,8 @@ function FilterChip({
 /* =========================================================================
  * <WorkCard /> — single project tile
  * ========================================================================= */
-function WorkCard({ work }: { work: Work }) {
-  const cat = getCategory(work.category);
+function WorkCard({ work, category }: { work: Work; category: Category }) {
+  const cat = category;
 
   return (
     <motion.article
@@ -246,7 +274,7 @@ function WorkCard({ work }: { work: Work }) {
 
       {/* Image / fallback */}
       <div className="relative aspect-[4/3] overflow-hidden">
-        <WorkThumbnail work={work} />
+        <WorkThumbnail work={work} cat={cat} />
 
         <div
           aria-hidden
@@ -315,9 +343,7 @@ function WorkCard({ work }: { work: Work }) {
   );
 }
 
-function WorkThumbnail({ work }: { work: Work }) {
-  const cat = getCategory(work.category);
-
+function WorkThumbnail({ work, cat }: { work: Work; cat: Category }) {
   if (work.image) {
     return (
       <Image

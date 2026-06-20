@@ -24,10 +24,19 @@ const REVALIDATE_SECONDS = 60;
  * Wire types (mirror api/schemas.py)
  * ------------------------------------------------------------------ */
 
+// Category id is now a free string (the valid set lives in the DB, enforced
+// by a foreign key) rather than a fixed union.
+export type ApiCategory = {
+  id: string;
+  label: string;
+  color: string;
+  icon: string; // react-icons name, resolved via lib/icons.ts
+};
+
 export type ApiWork = {
   title: string;
   description: string;
-  category: "data" | "automation" | "ai" | "web" | "analytics";
+  category: string;
   tech: string[];
   year: number;
   image?: string | null;
@@ -102,6 +111,7 @@ export type ApiPlace = {
 
 export type ApiContentBundle = {
   rotating_roles: ApiRotatingRole[];
+  categories: ApiCategory[];
   stats: ApiStat[];
   skills: ApiSkill[];
   experience: ApiTimelineItem[];
@@ -149,6 +159,7 @@ export async function fetchWorks(): Promise<ApiWork[]> {
 
 const EMPTY_BUNDLE: ApiContentBundle = {
   rotating_roles: [],
+  categories: [],
   stats: [],
   skills: [],
   experience: [],
@@ -187,3 +198,4 @@ export async function submitMessage(payload: {
     return false;
   }
 }
+// (categories are part of ApiContentBundle above)

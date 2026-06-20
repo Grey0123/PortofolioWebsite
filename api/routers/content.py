@@ -21,6 +21,7 @@ from supabase import Client
 from db import get_supabase
 from schemas import (
     CandidPhoto,
+    Category,
     ContactInfo,
     ContentBundle,
     OrbitService,
@@ -79,6 +80,10 @@ def _ordered_safe(
 def get_content_bundle(supabase: Client = Depends(get_supabase)) -> ContentBundle:
     try:
         rotating_roles = _ordered(supabase, "rotating_roles", "sort_order")
+        # _ordered_safe: this table was added after launch, so a DB that
+        # hasn't run the categories migration yet still returns the rest of
+        # the bundle instead of 502-ing. (See _ordered_safe docstring.)
+        categories     = _ordered_safe(supabase, "categories", "sort_order")
         stats          = _ordered(supabase, "stats", "sort_order")
         skills         = _ordered(supabase, "skills", "sort_order")
         timeline       = _ordered(supabase, "timeline", "sort_order")
@@ -130,6 +135,10 @@ def get_content_bundle(supabase: Client = Depends(get_supabase)) -> ContentBundl
 
     return ContentBundle(
         rotating_roles=[RotatingRole(label=r["label"]) for r in rotating_roles],
+        categories=[
+            Category(id=c["id"], label=c["label"], color=c["color"], icon=c["icon"])
+            for c in categories
+        ],
         stats=[Stat(**s) for s in stats],
         skills=[Skill(**s) for s in skills],
         experience=[TimelineItem(**t) for t in experience],
