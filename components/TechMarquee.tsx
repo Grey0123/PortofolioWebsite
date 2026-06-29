@@ -311,28 +311,30 @@ function ServicesHub({
         transition={{ duration: 3.6, repeat: Infinity, ease: "easeInOut" }}
       />
 
+      {/* The ONLY interactive element of the hub. It's sized to the visible
+          core (66%) rather than the full 150px box, so the clickable area
+          matches what the eye sees — there's no invisible ring around it to
+          swallow stray clicks. whileTap adds a tactile press so a real click
+          reads as distinct from a passing hover. */}
       <motion.button
         type="button"
         onClick={onClick}
         animate={{ scale: isOpen ? 1.08 : 1 }}
+        whileTap={{ scale: 0.94 }}
         transition={{ type: "spring", stiffness: 220, damping: 22 }}
-        className="pointer-events-auto absolute inset-0 flex items-center justify-center rounded-full bg-transparent"
+        className="pointer-events-auto relative flex h-[66%] w-[66%] cursor-pointer items-center justify-center rounded-full border border-white/20 text-white"
+        style={{
+          background: `conic-gradient(from 140deg, ${service.color}, #ff30ff, #00b7ff, ${service.color})`,
+          boxShadow: `0 0 44px ${service.color}bb, inset 0 0 20px rgba(255,255,255,0.28)`,
+        }}
         aria-expanded={isOpen}
         aria-label={`Services hub — ${service.name}`}
       >
         <div
-          className="pointer-events-none relative flex h-[66%] w-[66%] items-center justify-center rounded-full border border-white/20 text-white transition-[box-shadow] duration-200"
-          style={{
-            background: `conic-gradient(from 140deg, ${service.color}, #ff30ff, #00b7ff, ${service.color})`,
-            boxShadow: `0 0 44px ${service.color}bb, inset 0 0 20px rgba(255,255,255,0.28)`,
-          }}
+          className="pointer-events-none flex h-[78%] w-[78%] items-center justify-center rounded-full bg-[#0a0a14]"
+          style={{ boxShadow: `inset 0 0 18px ${service.color}77` }}
         >
-          <div
-            className="flex h-[78%] w-[78%] items-center justify-center rounded-full bg-[#0a0a14]"
-            style={{ boxShadow: `inset 0 0 18px ${service.color}77` }}
-          >
-            <Icon className="text-xl md:text-2xl" style={{ color: service.color }} />
-          </div>
+          <Icon className="text-xl md:text-2xl" style={{ color: service.color }} />
         </div>
       </motion.button>
     </div>
@@ -618,19 +620,16 @@ export function OrbitSystem({ services: apiServices }: { services?: ApiOrbitServ
             />
           )}
 
-          <ServicesHub
-            service={selectedService}
-            isOpen={selectorOpen}
-            onClick={() => setSelectorOpen((v) => !v)}
-          />
-
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedService.id}
               className="absolute inset-0"
               style={{ transformStyle: "preserve-3d" }}
               initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              // Fade the planets back when the selector is open so the
+              // service menu reads as the focus. They're already paused
+              // (frozen) while open; dimming removes the visual noise.
+              animate={{ opacity: selectorOpen ? 0.12 : 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
             >
@@ -658,6 +657,29 @@ export function OrbitSystem({ services: apiServices }: { services?: ApiOrbitServ
               setSelectedId(id);
               setSelectorOpen(false);
             }}
+          />
+        </div>
+
+        {/* ----------------------------------------------------------------
+         * Central hub — rendered in its OWN flat layer ON TOP of the 3D
+         * scene, NOT inside it.
+         *
+         * Why this matters: inside the `preserve-3d` scene, the browser
+         * paints and hit-tests children by their real Z depth, so any
+         * planet sweeping across center with a positive Z sits in front of
+         * the hub and steals the pointer — that intermittent capture was
+         * the click "flicker". Out here the hub is unconditionally the
+         * top-most thing at the center, so clicks land every time.
+         *
+         * The layer is `pointer-events-none` so its full-screen box doesn't
+         * block anything — only the hub button itself (pointer-events-auto)
+         * catches events, leaving every planet outside the core hoverable.
+         * ---------------------------------------------------------------- */}
+        <div className="pointer-events-none absolute inset-0 z-40">
+          <ServicesHub
+            service={selectedService}
+            isOpen={selectorOpen}
+            onClick={() => setSelectorOpen((v) => !v)}
           />
         </div>
       </div>
