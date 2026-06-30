@@ -275,3 +275,15 @@ happily read messages for you.
 - **Database**: it's already in Supabase — nothing to deploy.
 
 That's it. Welcome to your modern portfolio stack.
+
+---
+
+## 8. Roadmap (planned, not built yet)
+
+Planned features live in [`docs/ROADMAP.md`](docs/ROADMAP.md). When you ask
+"what's next," that's the file to open.
+
+- **Dedicated project detail page** (`/projects/[slug]`) — per-project
+  write-up of how it works, image gallery, and download buttons. Designed;
+  not started. Full spec, data model, and step-by-step build order in
+  `docs/ROADMAP.md`.

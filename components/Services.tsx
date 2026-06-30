@@ -91,13 +91,16 @@ export default function Services({ services }: { services?: ApiService[] }) {
   return (
     <section
       id="services"
-      className="relative overflow-hidden px-6 py-24 md:px-[10%]"
+      className="relative overflow-x-clip px-6 py-24 md:px-[10%]"
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[60%] bg-[radial-gradient(ellipse_at_top,rgba(255,0,79,0.08),transparent_60%)]"
-      />
+      {/* Warm note near the top — same #ff004f hue as before, but as a soft
+          blurred aura instead of a band pinned to the section's top edge. The
+          old version started abruptly at top-0, so it read as a hard divider
+          against the About section above. This bleeds across the boundary. */}
+      <SectionAura color="pink" position="top-left" opacity={0.12} />
       <SectionAura color="magenta" position="bottom-right" opacity={0.14} />
+      {/* Cool counter-tint on the left so the cards grid isn't flat. */}
+      <SectionAura color="cyan" position="center-left" opacity={0.1} />
 
       <div className="relative mx-auto max-w-[1400px]">
         <div className="flex flex-col gap-3">

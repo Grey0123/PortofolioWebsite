@@ -49,10 +49,22 @@ const SEED_STARS = (() => {
 })();
 
 export default function HeroBackground() {
+  // The `maskImage` below fades the ENTIRE hero backdrop (stars, aurora,
+  // grid) to transparent toward the bottom. This is what removes the seam
+  // between the hero and the rest of the page: instead of the vivid aurora
+  // being sliced off at the hero's edge, it tapers smoothly to nothing,
+  // revealing the continuous global PageBackground underneath. A mask (which
+  // subtracts opacity) is the right tool — a dark gradient overlay can only
+  // ADD color, so it would dim the stars into a visible band rather than
+  // blending them away.
+  const fadeMask =
+    "linear-gradient(to bottom, #000 0%, #000 70%, transparent 98%)";
+
   return (
     <div
       aria-hidden
       className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+      style={{ maskImage: fadeMask, WebkitMaskImage: fadeMask }}
     >
       {/* NOTE: no solid base here anymore — the global <PageBackground/>
           provides the deep-space base, and we layer the hero-only flourishes
@@ -108,11 +120,9 @@ export default function HeroBackground() {
       {/* Subtle dot grid overlay — gives the hero a 'tech / infra' texture. */}
       <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.08)_1px,transparent_1px)] bg-[length:28px_28px] [mask-image:radial-gradient(ellipse_at_center,black_50%,transparent_85%)]" />
 
-      {/* Soft fade at the bottom — not to solid ink anymore (that would hide
-          the page-global stars below) but to transparent with a nudge of
-          darker tint, so the hero's vivid aurora tapers into the calm
-          ambient star field continuing down the page. */}
-      <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-[#07070922]" />
+      {/* The old bottom dark-tint fade lived here. It's gone now — the
+          container-level mask (see the wrapper div above) handles the
+          bottom taper cleanly, without dimming the stars into a band. */}
     </div>
   );
 }

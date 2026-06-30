@@ -13,6 +13,7 @@ import { FaBars, FaTimes } from "react-icons/fa";
 const links = [
   { href: "#home", label: "Home" },
   { href: "#about", label: "About" },
+  { href: "#experience", label: "Experience" },
   { href: "#services", label: "Services" },
   { href: "#portfolio", label: "Portfolio" },
   { href: "#travel", label: "Travel" },

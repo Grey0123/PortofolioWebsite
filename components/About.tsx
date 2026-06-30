@@ -1,9 +1,16 @@
-"use client";
+// "About Me" — the first half of the old combined About section.
+//
+// This used to be a tabbed panel (Skills / Experience / Education) that was a
+// Client Component because the tabs needed `useState`. The standalone design
+// splits that apart: "About Me" (portrait + bio + skills) is its own section,
+// and the timeline moved to <ExperienceEducation/>. With the tabs gone there's
+// no interactivity left here, so this is now a plain Server Component — the
+// only client island is <CandidCarousel/>, which a Server Component can render
+// directly. (Server renders the static shell; the carousel hydrates on its own.)
 
-import { useState } from "react";
 import SectionAura from "./background/SectionAura";
 import CandidCarousel, { type CandidSlide } from "./CandidCarousel";
-import type { ApiCandidPhoto, ApiSkill, ApiTimelineItem } from "@/lib/api";
+import type { ApiCandidPhoto, ApiSkill } from "@/lib/api";
 
 // Used only when the API hasn't delivered any candid photos yet (DB not
 // seeded, backend down). Once `candid_photos` rows exist in Supabase, the
@@ -29,124 +36,108 @@ function toSlides(rows: ApiCandidPhoto[]): CandidSlide[] {
   }));
 }
 
-// Tab keys — kept as a literal union so a typo elsewhere is a TS error.
-type TabKey = "skills" | "experience" | "education";
-
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "skills", label: "Skills" },
-  { key: "experience", label: "Experience" },
-  { key: "education", label: "Education" },
-];
-
-/* ----------------------- TIMELINE SUBCOMPONENT ---------------------- */
-function Timeline({ items }: { items: ApiTimelineItem[] }) {
-  return (
-    <ol className="relative ml-4 mt-6 space-y-8 border-l border-white/10 pl-8">
-      {items.map((item, i) => (
-        <li key={i} className="relative">
-          <span className="absolute -left-[33px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-accent bg-ink">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-          </span>
-          <p className="text-xs font-semibold uppercase tracking-wider text-accent">
-            {item.period}
-          </p>
-          <h4 className="mt-1 text-lg font-semibold text-white">
-            {item.title}
-          </h4>
-          <p className="text-sm text-white/70">{item.org}</p>
-          <p className="mt-2 text-sm leading-relaxed text-muted">
-            {item.detail}
-          </p>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-/* ----------------------- SKILLS SUBCOMPONENT ------------------------ */
-function SkillsGrid({ items }: { items: ApiSkill[] }) {
-  return (
-    <div className="mt-6 grid gap-4 sm:grid-cols-2">
-      {items.map((item) => (
-        <div
-          key={item.title}
-          className="rounded-xl border border-white/5 bg-white/[0.02] p-4 transition-colors hover:border-accent/40 hover:bg-white/[0.04]"
-        >
-          <p className="text-sm font-semibold text-accent">{item.title}</p>
-          <p className="mt-1 text-sm text-muted">{item.detail}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ----------------------- MAIN COMPONENT ----------------------------- */
-// Props provided by the parent server component (app/page.tsx), which
-// fetches the /content bundle and slices it down to what each section
-// actually needs.
+// Props provided by the parent server component (app/page.tsx). Note that
+// `experience` / `education` are NO LONGER here — they belong to
+// <ExperienceEducation/> now.
 export default function About({
   skills = [],
-  experience = [],
-  education = [],
   candidPhotos = [],
 }: {
   skills?: ApiSkill[];
-  experience?: ApiTimelineItem[];
-  education?: ApiTimelineItem[];
   candidPhotos?: ApiCandidPhoto[];
 }) {
-  const [active, setActive] = useState<TabKey>("skills");
-
   // Pick API data when present, otherwise the fallback. This keeps the
   // section useful before the gallery tables have been seeded.
   const slides =
     candidPhotos.length > 0 ? toSlides(candidPhotos) : FALLBACK_CANDID_SLIDES;
 
   return (
-    <section id="about" className="relative overflow-hidden px-6 py-24 md:px-[10%]">
+    <section id="about" className="relative overflow-x-clip px-6 py-24 md:px-[10%]">
       <SectionAura color="cyan" position="top-left" />
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-12 md:flex-row md:items-start">
-        <div className="md:basis-[35%]">
-          <CandidCarousel slides={slides} />
+      <SectionAura color="magenta" position="bottom-right" opacity={0.1} />
+
+      {/* Two-column split: portrait (narrower) + copy (wider). The fr ratio
+          0.82 / 1.18 matches the standalone — the text column gets the room
+          it needs for a comfortable reading measure. Stacks on mobile. */}
+      <div className="mx-auto grid max-w-[1180px] gap-12 md:grid-cols-[0.82fr_1.18fr] md:items-center md:gap-[60px]">
+        {/* ---------------- LEFT: portrait card ---------------- */}
+        <div className="relative">
+          {/* Soft gradient "rim light" sitting just behind the card. Blurred
+              and low-opacity so it reads as a glow, not a hard border. */}
+          <div
+            aria-hidden
+            className="absolute -inset-[1.5px] rounded-[22px] opacity-50 blur-[3px]"
+            style={{
+              background:
+                "linear-gradient(150deg, #ff004f, transparent 45%, #00b7ff)",
+            }}
+          />
+          <div className="relative overflow-hidden rounded-[20px] border border-white/10">
+            <CandidCarousel slides={slides} />
+
+            {/* Overlay info (name / location / availability). pointer-events-none
+                so the carousel's own arrows + dots underneath stay clickable. */}
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
+
+              <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 font-mono text-[10.5px] text-[#43b02a] backdrop-blur-sm">
+                <span className="h-[7px] w-[7px] rounded-full bg-[#43b02a] shadow-[0_0_8px_#43b02a]" />
+                Open to work
+              </span>
+
+              <div className="absolute bottom-3 left-4">
+                <div className="text-[15px] font-semibold text-white">
+                  Nabil A. S. Gaharu
+                </div>
+                <div className="mt-0.5 font-mono text-[11px] text-white/60">
+                  Jakarta, Indonesia
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="md:basis-[60%]">
-          <span className="text-sm uppercase tracking-[0.3em] text-accent">
-            About Me
-          </span>
-          <h2 className="mt-2 text-4xl font-semibold md:text-6xl">
-            Curious by nature, rigorous by habit
+        {/* ---------------- RIGHT: bio + skills ---------------- */}
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.32em] text-accent">
+            01 / About me
+          </p>
+
+          <h2 className="mt-4 text-4xl font-semibold leading-[1.06] tracking-tight md:text-5xl">
+            Curious by nature,
+            <br />
+            {/* Serif italic accent word — the one typographic flourish from the
+                standalone. Tailwind's default `font-serif` stack covers it
+                without pulling in a new web font. */}
+            <span className="font-serif font-normal italic">rigorous</span> by
+            habit.
           </h2>
-          <p className="mt-6 leading-relaxed text-muted">
+
+          <p className="mt-6 max-w-[610px] text-[16.5px] leading-relaxed text-muted">
             I&apos;m dedicated to continuous learning and adaptability — known
             for my diligence and ability to pick things up quickly. I thrive
             equally on independent problem-solving and team collaboration,
             always focused on both the craft and the outcome.
           </p>
 
-          <div className="mt-8 flex gap-8 border-b border-white/10">
-            {TABS.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActive(tab.key)}
-                className={`relative pb-3 text-base font-medium transition-colors md:text-lg ${
-                  active === tab.key ? "text-white" : "text-muted hover:text-white"
-                }`}
-              >
-                {tab.label}
-                <span
-                  className={`absolute -bottom-[2px] left-0 h-[3px] bg-accent transition-all duration-500 ${
-                    active === tab.key ? "w-full" : "w-0"
-                  }`}
-                />
-              </button>
+          <div className="mt-8 h-px bg-white/[0.08]" />
+
+          {/* Skills — name + note, two columns. (The standalone shows a
+              percentage bar per skill; that needs a numeric `level` field on
+              the skills table, which the data doesn't have yet, so we render
+              the honest name + detail instead of inventing numbers.) */}
+          <div className="mt-7 grid gap-x-9 gap-y-6 sm:grid-cols-2">
+            {skills.map((skill) => (
+              <div key={skill.title}>
+                <p className="text-[15px] font-semibold text-white">
+                  {skill.title}
+                </p>
+                <p className="mt-1.5 font-mono text-[11px] leading-relaxed text-white/55">
+                  {skill.detail}
+                </p>
+              </div>
             ))}
           </div>
-
-          {active === "skills" && <SkillsGrid items={skills} />}
-          {active === "experience" && <Timeline items={experience} />}
-          {active === "education" && <Timeline items={education} />}
         </div>
       </div>
     </section>

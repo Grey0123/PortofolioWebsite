@@ -9,9 +9,19 @@
 //   position — a one-off flavour note that anchors the section visually
 //   without breaking the "single universe" feel of the site.
 //
-// Usage: drop it as the first child inside a `relative` section.
+// Usage: drop it as the first child inside a `relative` section whose
+// HORIZONTAL overflow is clipped but whose VERTICAL overflow is NOT — i.e.
+// `overflow-x-clip`, never `overflow-hidden`.
 //
-//   <section className="relative px-6 py-24 md:px-[10%]">
+//   Why this matters: the aura is intentionally oversized and offset off
+//   the section's edges. If the section clips vertically (overflow-hidden),
+//   the soft blurred blob is sliced flat at the boundary, turning a gentle
+//   glow into a hard horizontal line — that's the visible "seam" between
+//   sections. `overflow-x-clip` lets the blob's soft edges bleed into the
+//   neighbouring sections and blend (seamless), while still preventing the
+//   off-screen width from spawning a horizontal scrollbar.
+//
+//   <section className="relative overflow-x-clip px-6 py-24 md:px-[10%]">
 //     <SectionAura color="cyan" position="top-right" />
 //     ...
 //   </section>

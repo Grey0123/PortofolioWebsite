@@ -34,9 +34,11 @@ export default async function Portfolio({
   return (
     <section
       id="portfolio"
-      className="relative overflow-hidden px-6 py-24 md:px-[10%]"
+      className="relative overflow-x-clip px-6 py-24 md:px-[10%]"
     >
       <SectionAura color="pink" position="top-right" opacity={0.16} />
+      {/* Faint cyan on the opposite corner for a subtle pink→cyan wash. */}
+      <SectionAura color="cyan" position="bottom-left" opacity={0.1} />
       <div className="relative mx-auto max-w-[1400px]">
         <PortfolioClient works={works} categories={categories} />
       </div>

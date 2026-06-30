@@ -61,11 +61,13 @@ export default function Contact({
   return (
     <section
       id="contact"
-      className="relative overflow-hidden px-6 py-24 md:px-[10%]"
+      className="relative overflow-x-clip px-6 py-24 md:px-[10%]"
     >
       {/* Cyan bottom-right — closes the scroll with the same aurora note the
           hero opens with (pink → cyan → magenta loop). */}
       <SectionAura color="cyan" position="bottom-right" opacity={0.16} />
+      {/* Pink top-left echoes the hero's opening note one last time. */}
+      <SectionAura color="pink" position="top-left" opacity={0.1} />
       <div className="relative mx-auto max-w-[1400px]">
         <div className="flex flex-col gap-12 md:flex-row md:items-start">
           <div className="md:basis-[40%]">

@@ -122,9 +122,11 @@ export default function Travel({ places: placesProp }: { places?: ApiPlace[] } =
   return (
     <section
       id="travel"
-      className="relative overflow-hidden px-6 py-24 md:px-[10%]"
+      className="relative overflow-x-clip px-6 py-24 md:px-[10%]"
     >
       <SectionAura color="amber" position="center-left" opacity={0.14} />
+      {/* Cool cyan opposite the warm amber — keeps the gallery from going flat. */}
+      <SectionAura color="cyan" position="top-right" opacity={0.09} />
       <div className="relative mx-auto max-w-[1400px]">
         <div className="flex flex-col gap-2">
           <span className="text-sm uppercase tracking-[0.3em] text-accent">

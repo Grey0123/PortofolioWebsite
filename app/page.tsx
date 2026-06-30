@@ -13,6 +13,7 @@
 
 import Header from "@/components/Header";
 import About from "@/components/About";
+import ExperienceEducation from "@/components/ExperienceEducation";
 import Services from "@/components/Services";
 import Portfolio from "@/components/Portfolio";
 import Travel from "@/components/Travel";
@@ -40,9 +41,14 @@ export default async function HomePage() {
       <FadeInSection>
         <About
           skills={content.skills}
+          candidPhotos={content.candid_photos}
+        />
+      </FadeInSection>
+
+      <FadeInSection>
+        <ExperienceEducation
           experience={content.experience}
           education={content.education}
-          candidPhotos={content.candid_photos}
         />
       </FadeInSection>
 
