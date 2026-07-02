@@ -8,16 +8,27 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Keep the original palette so we can echo the old look where we want to.
-        ink: "#080808",
-        card: "#262626",
-        muted: "#ababab",
+        // Deep-space palette. ONE saturated accent (#ff004f); everything else
+        // is cool, desaturated "atmosphere" so the accent actually pops.
+        // Why: when pink, cyan, AND magenta all glow at full saturation,
+        // nothing is emphasized — it reads as a template. A single accent
+        // over indigo-black reads as a deliberate design decision.
+        ink: "#06070f",   // near-black with a blue-violet cast (space, not soot)
+        card: "#12141f",  // card surface, same hue family as ink
+        muted: "#a3a7bd", // cool gray for body text (was neutral #ababab)
         accent: "#ff004f",
-        cyanGlow: "#00b7ff",
-        magentaGlow: "#ff30ff",
+        // NOTE: keys kept so existing `via-magentaGlow` / `to-cyanGlow`
+        // classes don't break, but the VALUES are now soft cosmic tints —
+        // rose + periwinkle — instead of saturated neon.
+        cyanGlow: "#a5a8ff",
+        magentaGlow: "#ff5e86",
       },
       fontFamily: {
         sans: ["var(--font-poppins)", "ui-sans-serif", "system-ui", "sans-serif"],
+        // Headings: Space Grotesk — geometric, slightly technical, and (fittingly)
+        // designed for a space-y look. Distinct from Poppins-everywhere, which is
+        // the default look of a thousand generated portfolios.
+        display: ["var(--font-grotesk)", "var(--font-poppins)", "sans-serif"],
       },
       keyframes: {
         rotBGimg: {

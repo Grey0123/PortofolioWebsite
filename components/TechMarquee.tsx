@@ -82,7 +82,7 @@ const FALLBACK_SERVICE: Service = {
   name: "Services",
   shortName: "Services",
   tagline: "Loading…",
-  color: "#00b7ff",
+  color: "#8a90e8",
   Icon: getIcon("FaCode"),
   tools: [],
 };
@@ -324,8 +324,10 @@ function ServicesHub({
         transition={{ type: "spring", stiffness: 220, damping: 22 }}
         className="pointer-events-auto relative flex h-[66%] w-[66%] cursor-pointer items-center justify-center rounded-full border border-white/20 text-white"
         style={{
-          background: `conic-gradient(from 140deg, ${service.color}, #ff30ff, #00b7ff, ${service.color})`,
-          boxShadow: `0 0 44px ${service.color}bb, inset 0 0 20px rgba(255,255,255,0.28)`,
+          // Ring sweeps service color → periwinkle → back, instead of the old
+          // magenta+cyan rainbow — keeps the hub tied to the space palette.
+          background: `conic-gradient(from 140deg, ${service.color}, #8a90e8, ${service.color})`,
+          boxShadow: `0 0 32px ${service.color}88, inset 0 0 20px rgba(255,255,255,0.22)`,
         }}
         aria-expanded={isOpen}
         aria-label={`Services hub — ${service.name}`}
@@ -732,7 +734,7 @@ export default function TechMarquee({
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 30%, rgba(0,183,255,0.10), transparent 60%), radial-gradient(ellipse at 50% 90%, rgba(255,48,255,0.08), transparent 60%)",
+            "radial-gradient(ellipse at 50% 30%, rgba(90,100,200,0.10), transparent 60%), radial-gradient(ellipse at 50% 90%, rgba(107,86,196,0.08), transparent 60%)",
         }}
       />
 

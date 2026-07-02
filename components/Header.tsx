@@ -64,7 +64,7 @@ export default function Header({
             <div className="mt-10 flex flex-wrap gap-4">
               <a
                 href="#portfolio"
-                className="inline-block rounded-full bg-accent px-8 py-3 font-medium text-white shadow-[0_0_30px_rgba(255,0,79,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_40px_rgba(255,0,79,0.55)]"
+                className="inline-block rounded-full bg-accent px-8 py-3 font-medium text-white shadow-[0_0_24px_rgba(255,0,79,0.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_32px_rgba(255,0,79,0.4)]"
               >
                 View My Work
               </a>

@@ -30,7 +30,7 @@ function ServiceCard({
   return (
     <article
       style={{ "--card-accent": color } as CSSProperties}
-      className="glow-ring group relative rounded-2xl bg-card p-7 transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(0,183,255,0.25)]"
+      className="glow-ring group relative rounded-2xl border border-white/[0.06] bg-card p-7 transition-all duration-500 hover:-translate-y-2 hover:border-white/[0.12] hover:shadow-[0_16px_40px_rgba(0,0,0,0.45)]"
     >
       <div className="flex h-full flex-col">
         {/* Header row: service number + icon tile */}
@@ -93,14 +93,9 @@ export default function Services({ services }: { services?: ApiService[] }) {
       id="services"
       className="relative overflow-x-clip px-6 py-24 md:px-[10%]"
     >
-      {/* Warm note near the top — same #ff004f hue as before, but as a soft
-          blurred aura instead of a band pinned to the section's top edge. The
-          old version started abruptly at top-0, so it read as a hard divider
-          against the About section above. This bleeds across the boundary. */}
-      <SectionAura color="pink" position="top-left" opacity={0.12} />
-      <SectionAura color="magenta" position="bottom-right" opacity={0.14} />
-      {/* Cool counter-tint on the left so the cards grid isn't flat. */}
-      <SectionAura color="cyan" position="center-left" opacity={0.1} />
+      {/* Single accent note for the section (was three overlapping washes —
+          the biggest glow-pile on the page). */}
+      <SectionAura color="pink" position="top-left" opacity={0.1} />
 
       <div className="relative mx-auto max-w-[1400px]">
         <div className="flex flex-col gap-3">
@@ -138,7 +133,7 @@ export default function Services({ services }: { services?: ApiService[] }) {
           </div>
           <a
             href="#contact"
-            className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-white shadow-[0_0_30px_rgba(255,0,79,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_40px_rgba(255,0,79,0.55)]"
+            className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-medium text-white shadow-[0_0_24px_rgba(255,0,79,0.25)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_32px_rgba(255,0,79,0.4)]"
           >
             Start a conversation →
           </a>

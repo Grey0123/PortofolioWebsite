@@ -2,7 +2,7 @@
 // In the App Router this replaces the old <html>/<body> in index.html.
 
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Poppins, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import PageBackground from "@/components/background/PageBackground";
 
@@ -11,6 +11,16 @@ const poppins = Poppins({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-poppins",
+  display: "swap",
+});
+
+// Heading font. Pairing a distinctive display face (headings) with a neutral
+// body face (Poppins) is the classic two-font system — it makes the type feel
+// designed rather than defaulted. Applied globally to h1–h3 in globals.css.
+const grotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-grotesk",
   display: "swap",
 });
 
@@ -124,7 +134,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={poppins.variable}>
+    <html lang="en" className={`${poppins.variable} ${grotesk.variable}`}>
       <body className="bg-ink font-sans text-white antialiased">
         {/* Global deep-space layer. Sits BEHIND every section so stars and
             nebula washes continue from the hero through About → Services →

@@ -11,7 +11,6 @@
 
 import { useState, type FormEvent } from "react";
 
-import SectionAura from "./background/SectionAura";
 import { submitMessage, type ApiContactInfo, type ApiSocialLink } from "@/lib/api";
 
 // Sensible defaults so the section never looks empty if the API is down.
@@ -74,11 +73,9 @@ export default function Contact({
         className="pointer-events-none absolute bottom-0 left-1/2 h-[62%] w-[80%] -translate-x-1/2 rounded-full blur-[120px]"
         style={{
           background: "radial-gradient(circle, #ff004f 0%, transparent 65%)",
-          opacity: 0.22,
+          opacity: 0.16,
         }}
       />
-      {/* Faint top tint keeps the boundary with Travel above seamless. */}
-      <SectionAura color="cyan" position="top-left" opacity={0.1} />
 
       {/* ---------------- Centered call-to-action ---------------- */}
       <div className="relative mx-auto max-w-[1180px] text-center">
@@ -100,7 +97,7 @@ export default function Contact({
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3.5">
           <a
             href={`mailto:${info.email}`}
-            className="rounded-full bg-accent px-7 py-3.5 font-medium text-white shadow-[0_0_34px_rgba(255,0,79,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_46px_rgba(255,0,79,0.6)]"
+            className="rounded-full bg-accent px-7 py-3.5 font-medium text-white shadow-[0_0_26px_rgba(255,0,79,0.28)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_36px_rgba(255,0,79,0.45)]"
           >
             {info.email}
           </a>

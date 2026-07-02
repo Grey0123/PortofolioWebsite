@@ -14,9 +14,11 @@ import type { ApiTimelineItem } from "@/lib/api";
 
 // Per-kind visual treatment. Keeping this in one map means the badge colour
 // and label are defined once; add a new kind here if the data ever grows one.
+// Work gets the site accent (it's the thing recruiters scan for);
+// Education gets a calm periwinkle so it's distinct without competing.
 const KIND: Record<ApiTimelineItem["kind"], { label: string; color: string }> = {
-  experience: { label: "Work", color: "#00b7ff" }, // cyan
-  education: { label: "Education", color: "#ff30ff" }, // magenta
+  experience: { label: "Work", color: "#ff4f7c" },
+  education: { label: "Education", color: "#9aa0e8" },
 };
 
 export default function ExperienceEducation({
@@ -37,8 +39,7 @@ export default function ExperienceEducation({
       id="experience"
       className="relative overflow-x-clip px-6 py-24 md:px-[10%]"
     >
-      <SectionAura color="cyan" position="top-left" opacity={0.12} />
-      <SectionAura color="magenta" position="bottom-right" opacity={0.1} />
+      <SectionAura color="magenta" position="bottom-right" opacity={0.12} />
 
       <div className="relative mx-auto max-w-[1180px]">
         <p className="font-mono text-xs uppercase tracking-[0.32em] text-accent">

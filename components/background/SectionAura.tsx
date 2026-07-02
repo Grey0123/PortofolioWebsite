@@ -37,11 +37,15 @@ type Position =
   | "center-left"
   | "center-right";
 
+// Deep-space remap. The KEYS are kept so existing call sites don't break,
+// but every non-accent value is now a cool, desaturated space tone. Rule of
+// the theme: pink (#ff004f) is the only saturated color on the page — the
+// others must read as "different shades of night sky", not competing neons.
 const COLORS: Record<Color, string> = {
-  pink: "#ff004f",
-  cyan: "#00b7ff",
-  magenta: "#ff30ff",
-  amber: "#f89820",
+  pink: "#ff004f",    // the accent — use sparingly
+  cyan: "#4a55b8",    // cool indigo (was neon cyan)
+  magenta: "#6b56c4", // muted violet (was neon magenta)
+  amber: "#7c6aa8",   // dusty lavender (was orange — warm tones fight the theme)
 };
 
 // Map each position to % offsets. Top/bottom use 0/auto; left/right likewise.

@@ -53,8 +53,9 @@ export default function About({
 
   return (
     <section id="about" className="relative overflow-x-clip px-6 py-24 md:px-[10%]">
-      <SectionAura color="cyan" position="top-left" />
-      <SectionAura color="magenta" position="bottom-right" opacity={0.1} />
+      {/* One aura per section is the new rule — two+ washes per screen was a
+          big part of the "everything glows" template look. */}
+      <SectionAura color="cyan" position="top-left" opacity={0.14} />
 
       {/* Two-column split: portrait (narrower) + copy (wider). The fr ratio
           0.82 / 1.18 matches the standalone — the text column gets the room
@@ -69,7 +70,7 @@ export default function About({
             className="absolute -inset-[1.5px] rounded-[22px] opacity-50 blur-[3px]"
             style={{
               background:
-                "linear-gradient(150deg, #ff004f, transparent 45%, #00b7ff)",
+                "linear-gradient(150deg, #ff004f, transparent 45%, #6a74d8)",
             }}
           />
           <div className="relative overflow-hidden rounded-[20px] border border-white/10">

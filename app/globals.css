@@ -8,8 +8,19 @@ html {
 }
 
 body {
-  background: #080808;
+  background: #06070f; /* matches `ink` in tailwind.config — indigo-black space base */
   color: white;
+}
+
+/* Two-font system: Space Grotesk for headings, Poppins for body.
+   Done here (base layer) instead of adding `font-display` to every heading —
+   one rule, zero missed spots. Tailwind classes on individual elements
+   (e.g. the serif-italic flourish spans) still win over this base rule. */
+@layer base {
+  h1, h2, h3 {
+    font-family: var(--font-grotesk), var(--font-poppins), ui-sans-serif, sans-serif;
+    letter-spacing: -0.015em; /* grotesks read better slightly tightened at display sizes */
+  }
 }
 
 /* Aurora background — three soft color blobs drifting over a dark base.
@@ -19,9 +30,12 @@ body {
   position: absolute;
   border-radius: 9999px;
   filter: blur(90px);
-  opacity: 0.55;
+  opacity: 0.4; /* was 0.55 — atmosphere, not a light show */
   will-change: transform;
 }
+/* Recolored for the deep-space theme: ONE accent nebula (pink), the other
+   two are cool indigo/violet "space gas" that supports rather than competes.
+   The old pink+cyan+magenta trio was the main source of the neon-template look. */
 .aurora-1 {
   top: -15%;
   left: -10%;
@@ -35,7 +49,7 @@ body {
   right: -15%;
   width: 55%;
   height: 55%;
-  background: radial-gradient(circle, #00b7ff 0%, transparent 65%);
+  background: radial-gradient(circle, #4a55b8 0%, transparent 65%);
   animation: auroraDrift2 22s ease-in-out infinite alternate;
 }
 .aurora-3 {
@@ -43,9 +57,9 @@ body {
   left: 20%;
   width: 60%;
   height: 60%;
-  background: radial-gradient(circle, #ff30ff 0%, transparent 65%);
+  background: radial-gradient(circle, #6b56c4 0%, transparent 65%);
   animation: auroraDrift3 26s ease-in-out infinite alternate;
-  opacity: 0.4;
+  opacity: 0.3;
 }
 
 @keyframes auroraDrift1 {
@@ -74,9 +88,11 @@ body {
   to   { transform: translateX(-50%); }
 }
 
-/* Gradient text helper */
+/* Gradient text helper — accent-led instead of the old pink→magenta→cyan
+   rainbow. Pink melting into pale periwinkle stays on-brand (one accent)
+   and matches the space palette. */
 .gradient-text {
-  background: linear-gradient(120deg, #ff004f 0%, #ff30ff 40%, #00b7ff 90%);
+  background: linear-gradient(120deg, #ff004f 0%, #ff5e86 45%, #a5a8ff 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -122,7 +138,8 @@ body {
   left: 50%;
   width: 20%;
   height: 200%;
-  background-image: linear-gradient(180deg, #00b7ff, #ff30ff);
+  /* accent → periwinkle, matching .gradient-text (was cyan → magenta) */
+  background-image: linear-gradient(180deg, #ff004f, #a5a8ff);
   animation: rotBGimg 3s linear infinite;
   opacity: 0;
   z-index: 0;
@@ -132,7 +149,7 @@ body {
   content: "";
   position: absolute;
   inset: 3px;
-  background: #262626; /* same as the card color — masks the gradient's middle */
+  background: #12141f; /* same as the `card` color — masks the gradient's middle */
   border-radius: inherit;
   opacity: 0;
   z-index: 1;
@@ -163,4 +180,15 @@ body {
 @keyframes heroStarTwinkle {
   0%, 100% { opacity: 1;    transform: scale(1); }
   50%      { opacity: 0.25; transform: scale(0.55); }
+}
+
+/* Global (PageBackground) star twinkle — slower and gentler than the hero's.
+   These stars are ambience for the whole page, so the pulse should be felt,
+   not watched. `opacity` only (no scale) keeps it cheap to composite. */
+.star-twinkle {
+  animation: starTwinkle 6.5s ease-in-out infinite;
+}
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 0.1; }
 }
