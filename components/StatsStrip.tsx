@@ -31,6 +31,13 @@ function toViewModel(api: ApiStat[]): StatVM[] {
   });
 }
 
+// Short forms for text stats on narrow screens. The DB keeps the full word;
+// the UI swaps it below the `md` breakpoint, where a long word doesn't fit
+// in half a phone-width cell next to the icon. Add entries as needed.
+const SHORT_TEXT: Record<string, string> = {
+  Indonesia: "ID",
+};
+
 // Small helper component to count a number from 0 to `to` once it's visible.
 function Counter({ to, suffix }: { to: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -76,7 +83,14 @@ export default function StatsStrip({ stats }: { stats?: ApiStat[] }) {
                   {"value" in stat ? (
                     <Counter to={stat.value} suffix={stat.suffix} />
                   ) : (
-                    stat.text
+                    <>
+                      {/* Short form on phones ("ID"), full word from md up —
+                          "Indonesia" doesn't fit half a phone-width cell. */}
+                      <span className="md:hidden">
+                        {SHORT_TEXT[stat.text] ?? stat.text}
+                      </span>
+                      <span className="hidden md:inline">{stat.text}</span>
+                    </>
                   )}
                 </div>
                 <div className="text-xs uppercase tracking-wider text-muted">
