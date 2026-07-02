@@ -117,8 +117,10 @@ export default function HeroBackground() {
       <div className="aurora aurora-2" />
       <div className="aurora aurora-3" />
 
-      {/* Subtle dot grid overlay — gives the hero a 'tech / infra' texture. */}
-      <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.08)_1px,transparent_1px)] bg-[length:28px_28px] [mask-image:radial-gradient(ellipse_at_center,black_50%,transparent_85%)]" />
+      {/* Subtle dot grid overlay — gives the hero a 'tech / infra' texture.
+          Dialed down (0.08 → 0.05) now that the global background is clean
+          sky: the grid is a hero-only texture note, not a page pattern. */}
+      <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[length:28px_28px] [mask-image:radial-gradient(ellipse_at_center,black_50%,transparent_85%)]" />
 
       {/* The old bottom dark-tint fade lived here. It's gone now — the
           container-level mask (see the wrapper div above) handles the
