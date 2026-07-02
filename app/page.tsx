@@ -31,7 +31,14 @@ export default async function HomePage() {
   const content = await fetchContent();
 
   return (
-    <main>
+    // `overflow-clip` is a safety net: decorative glows/auras are absolutely
+    // positioned and several hang past their section edges. Anything that
+    // overflows BELOW the last in-flow element (the footer) would otherwise
+    // extend the page's scroll height and leave a dead glowing gap under the
+    // footer. Clipping at the page container caps the document exactly at the
+    // footer's bottom. (It does NOT clip the fixed navbar or the fixed
+    // PageBackground — those aren't laid out inside this box.)
+    <main className="overflow-clip">
       <Header
         rotatingRoles={content.rotating_roles}
         stats={content.stats}

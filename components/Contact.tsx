@@ -1,18 +1,18 @@
-// Client Component because of form state + submit handler. Submissions go
+// Client Component because of the form state + submit handler. Submissions go
 // to the FastAPI backend at POST /messages, which validates the body
 // (Pydantic) and writes it to Supabase using the service-role key.
 //
-// The contact info (email, phone, CV link) and social links are passed
-// down as props from the parent server component — fetched once for the
-// whole page in app/page.tsx.
+// Layout follows the standalone HTML's contact design: a centered call-to-
+// action (eyebrow → gradient headline → email/résumé buttons → socials + phone)
+// with the working message form kept below it. The contact info (email, phone,
+// CV link) and social links are passed down as props from the parent server
+// component — fetched once for the whole page in app/page.tsx.
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { FaPaperPlane, FaPhoneAlt } from "react-icons/fa";
 
 import SectionAura from "./background/SectionAura";
 import { submitMessage, type ApiContactInfo, type ApiSocialLink } from "@/lib/api";
-import { getIcon } from "@/lib/icons";
 
 // Sensible defaults so the section never looks empty if the API is down.
 const FALLBACK: ApiContactInfo = {
@@ -63,103 +63,138 @@ export default function Contact({
       id="contact"
       className="relative overflow-x-clip px-6 py-24 md:px-[10%]"
     >
-      {/* Cyan bottom-right — closes the scroll with the same aurora note the
-          hero opens with (pink → cyan → magenta loop). */}
-      <SectionAura color="cyan" position="bottom-right" opacity={0.16} />
-      {/* Pink top-left echoes the hero's opening note one last time. */}
-      <SectionAura color="pink" position="top-left" opacity={0.1} />
-      <div className="relative mx-auto max-w-[1400px]">
-        <div className="flex flex-col gap-12 md:flex-row md:items-start">
-          <div className="md:basis-[40%]">
-            <h2 className="text-4xl font-semibold md:text-6xl">Contact Me</h2>
-            <p className="mt-6 flex items-center gap-3 text-muted">
-              <FaPaperPlane className="text-accent" />
-              {info.email}
-            </p>
-            {info.phone && (
-              <p className="mt-3 flex items-center gap-3 text-muted">
-                <FaPhoneAlt className="text-accent" />
-                {info.phone}
-              </p>
-            )}
+      {/* Accent glow rising from the bottom-centre — the focal light of the
+          HTML contact design. Anchored at bottom-0 (NOT a negative offset) so
+          the box stays inside the section: an overflowing glow here would add
+          empty scrollable space below the footer and make it look like it's
+          floating. The blur halo still feathers softly past the edge, which is
+          all the bleed we want. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute bottom-0 left-1/2 h-[62%] w-[80%] -translate-x-1/2 rounded-full blur-[120px]"
+        style={{
+          background: "radial-gradient(circle, #ff004f 0%, transparent 65%)",
+          opacity: 0.22,
+        }}
+      />
+      {/* Faint top tint keeps the boundary with Travel above seamless. */}
+      <SectionAura color="cyan" position="top-left" opacity={0.1} />
 
-            <div className="mt-8 flex gap-5 text-3xl text-muted">
-              {socialLinks.map((link) => {
-                const Icon = getIcon(link.icon);
-                const isExternal = link.url.startsWith("http");
-                return (
-                  <a
-                    key={link.platform}
-                    href={link.url}
-                    aria-label={link.platform}
-                    target={isExternal ? "_blank" : undefined}
-                    rel={isExternal ? "noopener noreferrer" : undefined}
-                    className="transition hover:-translate-y-1 hover:text-accent"
-                  >
-                    <Icon />
-                  </a>
-                );
-              })}
-            </div>
+      {/* ---------------- Centered call-to-action ---------------- */}
+      <div className="relative mx-auto max-w-[1180px] text-center">
+        <p className="font-mono text-xs uppercase tracking-[0.32em] text-accent">
+          Get in touch
+        </p>
 
-            {info.cv_url && (
-              <a
-                href={info.cv_url}
-                download
-                className="mt-10 inline-block rounded-md bg-accent px-8 py-3 font-medium text-white transition-all hover:brightness-110"
-              >
-                Download CV
-              </a>
-            )}
-          </div>
+        <h2 className="mx-auto mt-5 max-w-[780px] text-[clamp(38px,6vw,76px)] font-semibold leading-[1.0] tracking-tight">
+          Let&apos;s build something{" "}
+          {/* Serif italic + the site's gradient-text utility — the standalone's
+              one headline flourish, reusing the existing gradient so it stays
+              on-brand with the hero. */}
+          <span className="gradient-text font-serif font-normal italic">
+            worth shipping.
+          </span>
+        </h2>
 
-          <div className="md:basis-[55%]">
-            <form
-              onSubmit={handleSubmit}
-              className="flex flex-col gap-4"
-              name="submit-to-api"
+        {/* Primary actions: email (mailto) + résumé download. */}
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-3.5">
+          <a
+            href={`mailto:${info.email}`}
+            className="rounded-full bg-accent px-7 py-3.5 font-medium text-white shadow-[0_0_34px_rgba(255,0,79,0.4)] transition-all hover:-translate-y-0.5 hover:shadow-[0_0_46px_rgba(255,0,79,0.6)]"
+          >
+            {info.email}
+          </a>
+          {info.cv_url && (
+            <a
+              href={info.cv_url}
+              download
+              className="rounded-full border border-white/15 bg-white/[0.04] px-7 py-3.5 font-medium text-white transition-all hover:-translate-y-0.5 hover:border-white/40"
             >
-              <input
-                type="text"
-                name="Name"
-                placeholder="Your Name"
-                required
-                className="rounded-md bg-card p-4 text-white outline-none transition-all focus:ring-2 focus:ring-accent"
-              />
-              <input
-                type="email"
-                name="Email"
-                placeholder="Your Email"
-                required
-                className="rounded-md bg-card p-4 text-white outline-none transition-all focus:ring-2 focus:ring-accent"
-              />
-              <textarea
-                name="Message"
-                rows={6}
-                placeholder="Your Message"
-                className="resize-none rounded-md bg-card p-4 text-white outline-none transition-all focus:ring-2 focus:ring-accent"
-              />
-              <button
-                type="submit"
-                disabled={status === "sending"}
-                className="w-fit rounded-md bg-accent px-10 py-3 font-medium text-white transition-all hover:brightness-110 disabled:opacity-60"
-              >
-                {status === "sending" ? "Sending…" : "Submit"}
-              </button>
-
-              {status === "sent" && (
-                <p className="text-green-400">
-                  Message sent successfully. Thank you!
-                </p>
-              )}
-              {status === "error" && (
-                <p className="text-red-400">
-                  Something went wrong. Please try again.
-                </p>
-              )}
-            </form>
-          </div>
+              Download résumé ↓
+            </a>
+          )}
         </div>
+
+        {/* Socials + phone — mono row, echoing the HTML's "↗ Label" treatment. */}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-7 gap-y-3 font-mono text-[13px] text-white/60">
+          {socialLinks.map((link) => {
+            const isExternal = link.url.startsWith("http");
+            return (
+              <a
+                key={link.platform}
+                href={link.url}
+                target={isExternal ? "_blank" : undefined}
+                rel={isExternal ? "noopener noreferrer" : undefined}
+                className="inline-flex items-center gap-1.5 transition-colors hover:text-white"
+              >
+                <span className="text-accent">↗</span>
+                {link.platform}
+              </a>
+            );
+          })}
+          {info.phone && <span className="text-white/40">{info.phone}</span>}
+        </div>
+      </div>
+
+      {/* ---------------- Kept working form ----------------
+          The HTML design drops the form, but we keep it (your FastAPI /messages
+          + Supabase pipeline) under a divider so visitors who prefer not to open
+          their mail client can still reach you. */}
+      <div className="relative mx-auto mt-20 max-w-[640px]">
+        <div className="mb-7 flex items-center gap-4">
+          <span className="h-px flex-1 bg-white/10" />
+          <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/40">
+            Or send a message
+          </span>
+          <span className="h-px flex-1 bg-white/10" />
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-4"
+          name="submit-to-api"
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <input
+              type="text"
+              name="Name"
+              placeholder="Your Name"
+              required
+              className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-white outline-none transition-all placeholder:text-white/40 focus:border-accent/60 focus:bg-white/[0.05]"
+            />
+            <input
+              type="email"
+              name="Email"
+              placeholder="Your Email"
+              required
+              className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-white outline-none transition-all placeholder:text-white/40 focus:border-accent/60 focus:bg-white/[0.05]"
+            />
+          </div>
+          <textarea
+            name="Message"
+            rows={5}
+            placeholder="Your Message"
+            className="resize-none rounded-xl border border-white/10 bg-white/[0.03] p-4 text-white outline-none transition-all placeholder:text-white/40 focus:border-accent/60 focus:bg-white/[0.05]"
+          />
+          <button
+            type="submit"
+            disabled={status === "sending"}
+            className="mx-auto w-fit rounded-full bg-accent px-10 py-3.5 font-medium text-white transition-all hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60"
+          >
+            {status === "sending" ? "Sending…" : "Send message"}
+          </button>
+
+          {status === "sent" && (
+            <p className="text-center text-green-400">
+              Message sent successfully. Thank you!
+            </p>
+          )}
+          {status === "error" && (
+            <p className="text-center text-red-400">
+              Something went wrong. Please try again.
+            </p>
+          )}
+        </form>
       </div>
     </section>
   );
