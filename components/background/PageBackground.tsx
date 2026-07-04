@@ -42,18 +42,24 @@ const SEED_STARS = (() => {
     tint: boolean;    // pale-blue star instead of white
     twinkle: boolean; // slow opacity pulse
   }[] = [];
-  for (let i = 0; i < 200; i++) {
+  // Denser field to match the black-hole section's backdrop (the mock's
+  // gargantua mode runs 750 stars; scaled for the taller page canvas).
+  for (let i = 0; i < 340; i++) {
     stars.push({
       x: rand() * 100,
       y: rand() * 200,
       r: rand() * 0.9 + 0.25,
-      o: rand() * 0.35 + 0.08, // dim — ambience, not focal
-      tint: rand() < 0.22,
-      twinkle: rand() < 0.08, // only ~1 in 12 — subtle life, not a disco
+      o: rand() * 0.42 + 0.1,
+      tint: rand() < 0.3, // more blue-white stars — the "cold sky" cast
+      twinkle: rand() < 0.22, // roughly 1 in 4-5 pulses gently
     });
   }
   return stars;
 })();
+
+// NOTE: the twinkling glow spots moved to <TwinkleField/> — they now live
+// in the DOCUMENT (scrolling with the sections) rather than in this fixed
+// viewport layer, so each section owns its own lights.
 
 export default function PageBackground() {
   return (
@@ -97,26 +103,38 @@ export default function PageBackground() {
         ))}
       </svg>
 
-      {/* 4. Nebula washes. Cool indigo + violet carry the atmosphere;
-            a single low-opacity pink blob ties the sky to the accent.
-            Opacities are deliberately lower than before — nebulas should
-            be something you notice on the second look, not the first. */}
+      {/* 4. Nebula washes — the black-hole section's palette (the mock's
+            gargantua blob colours: violet, blue-violet, orchid, magenta)
+            spread across the whole page so every section shares that
+            "blue-violet space" atmosphere. */}
       <div
-        className="absolute -left-[20%] top-[8%] h-[55vh] w-[55vw] rounded-full opacity-[0.10] blur-3xl"
+        className="absolute -left-[20%] top-[6%] h-[55vh] w-[55vw] rounded-full opacity-[0.13] blur-3xl"
         style={{
-          background: "radial-gradient(circle, #ff004f 0%, transparent 65%)",
+          background: "radial-gradient(circle, rgb(130,80,210) 0%, transparent 65%)",
         }}
       />
       <div
-        className="absolute -right-[15%] top-[38%] h-[50vh] w-[50vw] rounded-full opacity-[0.14] blur-3xl"
+        className="absolute -right-[15%] top-[26%] h-[50vh] w-[50vw] rounded-full opacity-[0.14] blur-3xl"
         style={{
-          background: "radial-gradient(circle, #3d478f 0%, transparent 65%)",
+          background: "radial-gradient(circle, rgb(75,95,215) 0%, transparent 65%)",
         }}
       />
       <div
-        className="absolute bottom-[5%] left-[20%] h-[55vh] w-[55vw] rounded-full opacity-[0.12] blur-3xl"
+        className="absolute left-[30%] top-[52%] h-[45vh] w-[45vw] rounded-full opacity-[0.10] blur-3xl"
         style={{
-          background: "radial-gradient(circle, #5b4a9e 0%, transparent 65%)",
+          background: "radial-gradient(circle, rgb(190,85,170) 0%, transparent 65%)",
+        }}
+      />
+      <div
+        className="absolute bottom-[4%] left-[8%] h-[55vh] w-[55vw] rounded-full opacity-[0.12] blur-3xl"
+        style={{
+          background: "radial-gradient(circle, rgb(150,70,190) 0%, transparent 65%)",
+        }}
+      />
+      <div
+        className="absolute -right-[10%] bottom-[18%] h-[45vh] w-[45vw] rounded-full opacity-[0.10] blur-3xl"
+        style={{
+          background: "radial-gradient(circle, rgb(75,95,215) 0%, transparent 65%)",
         }}
       />
     </div>

@@ -11,6 +11,7 @@
 
 import { useState, type FormEvent } from "react";
 
+import BlackHoleContact from "./background/BlackHoleContact";
 import { submitMessage, type ApiContactInfo, type ApiSocialLink } from "@/lib/api";
 
 // Sensible defaults so the section never looks empty if the API is down.
@@ -32,6 +33,11 @@ export default function Contact({
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle"
   );
+
+  // True while the black hole's warp animation is travelling — the section
+  // content fades out so the plunge plays on a clean stage, and fades back
+  // in when the return trip lands.
+  const [veiled, setVeiled] = useState(false);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -60,23 +66,22 @@ export default function Contact({
   return (
     <section
       id="contact"
-      className="relative overflow-x-clip px-6 py-24 md:px-[10%]"
+      className="relative overflow-x-clip px-6 pt-24 pb-[30rem] md:px-[10%] md:pb-[34rem]"
     >
-      {/* Accent glow rising from the bottom-centre — the focal light of the
-          HTML contact design. Anchored at bottom-0 (NOT a negative offset) so
-          the box stays inside the section: an overflowing glow here would add
-          empty scrollable space below the footer and make it look like it's
-          floating. The blur halo still feathers softly past the edge, which is
-          all the bleed we want. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute bottom-0 left-1/2 h-[62%] w-[80%] -translate-x-1/2 rounded-full blur-[120px]"
-        style={{
-          background: "radial-gradient(circle, #ff004f 0%, transparent 65%)",
-          opacity: 0.16,
-        }}
-      />
+      {/* The event horizon rising from below — replaces the old CSS bottom
+          glow. Canvas backdrop, pointer-events-none, so the form and buttons
+          above are never blocked. The extra bottom padding (pb-56/72) is the
+          room the horizon crest rises into. */}
+      <BlackHoleContact onVeilChange={setVeiled} />
 
+      {/* Everything inside this wrapper fades out during the warp (and is
+          click-proofed via pointer-events-none) so the animation isn't
+          cluttered by the form floating over it. */}
+      <div
+        className={`transition-opacity duration-700 ${
+          veiled ? "pointer-events-none opacity-0" : "opacity-100"
+        }`}
+      >
       {/* ---------------- Centered call-to-action ---------------- */}
       <div className="relative mx-auto max-w-[1180px] text-center">
         <p className="font-mono text-xs uppercase tracking-[0.32em] text-accent">
@@ -193,6 +198,8 @@ export default function Contact({
           )}
         </form>
       </div>
+      </div>
+      {/* end veil wrapper */}
     </section>
   );
 }

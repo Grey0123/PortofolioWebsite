@@ -20,6 +20,7 @@ import Travel from "@/components/Travel";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import FadeInSection from "@/components/animations/FadeInSection";
+import TwinkleField from "@/components/background/TwinkleField";
 import { fetchContent } from "@/lib/api";
 
 // Same 60s window as the underlying fetcher in lib/api.ts. Declaring it
@@ -38,7 +39,10 @@ export default async function HomePage() {
     // footer. Clipping at the page container caps the document exactly at the
     // footer's bottom. (It does NOT clip the fixed navbar or the fixed
     // PageBackground — those aren't laid out inside this box.)
-    <main className="overflow-clip">
+    <main className="relative overflow-clip">
+      {/* Twinkling lights that live IN the document (they scroll with the
+          sections), unlike the fixed PageBackground behind the viewport. */}
+      <TwinkleField />
       <Header
         rotatingRoles={content.rotating_roles}
         stats={content.stats}

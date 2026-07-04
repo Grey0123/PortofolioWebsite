@@ -102,6 +102,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .aurora,
   .marquee-track,
+  .star-twinkle,
+  .hero-star-twinkle,
   *[class*="animate-"] {
     animation: none !important;
   }
