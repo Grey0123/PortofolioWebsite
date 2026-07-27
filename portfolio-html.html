@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<script src="./image-slot.js"></script>
+<style>
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;background:#070709;color:#f4f4f5;font-family:'Space Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;--accent:#ff004f;--accent2:#00b7ff;--glow:0.5;}
+  a{color:inherit;text-decoration:none;}
+  ::selection{background:rgba(255,0,79,0.32);color:#fff;}
+  @keyframes auroraA{0%,100%{transform:translate(0,0) scale(1);}50%{transform:translate(8%,6%) scale(1.12);}}
+  image-slot{--is-bg:rgba(255,255,255,0.02);}
+  .frow{display:grid;grid-template-columns:22px 1fr auto;gap:13px;align-items:center;padding:11px 20px;border-top:1px solid rgba(255,255,255,0.06);transition:background .2s;}
+  .frow:hover{background:rgba(255,255,255,0.028);}
+  .fname{font-size:14.5px;color:#d7d7dd;}
+  .frow:hover .fname{color:var(--accent);}
+  .fmsg{font-family:'JetBrains Mono',monospace;font-size:12px;color:#6b6b73;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ftime{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#71717a;white-space:nowrap;}
+  .tab{position:relative;padding:14px 4px;font-size:14px;color:#9a9aa3;display:inline-flex;align-items:center;gap:8px;border-bottom:2px solid transparent;cursor:pointer;}
+  .tab:hover{color:#f4f4f5;}
+  .tab.on{color:#f4f4f5;border-bottom-color:var(--accent);}
+  .cnt{font-family:'JetBrains Mono',monospace;font-size:11px;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,0.08);color:#cfcfd4;}
+  .ghost{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;padding:8px 15px;border-radius:9px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.04);color:#e7e7ea;}
+  .ghost:hover{border-color:rgba(255,255,255,0.35);}
+  .prim{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;padding:9px 17px;border-radius:9px;background:var(--accent);color:#fff;box-shadow:0 0 26px rgba(255,0,79,0.34);}
+  .prim:hover{transform:translateY(-1px);}
+  .metric{padding:18px 20px;border:1px solid rgba(255,255,255,0.08);border-radius:14px;background:rgba(255,255,255,0.018);}
+  @media (max-width:900px){.pp-hero{grid-template-columns:1fr!important;}.pp-cols{grid-template-columns:1fr!important;}}
+</style>
+</helmet>
+
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#070709"/>
+    <rect x="24" y="22" width="52" height="8" rx="2" fill="#ff004f"/>
+    <rect x="24" y="38" width="34" height="5" rx="2" fill="#3a3a44"/>
+    <rect x="24" y="50" width="52" height="5" rx="2" fill="#3a3a44"/>
+    <rect x="24" y="60" width="52" height="5" rx="2" fill="#3a3a44"/>
+    <rect x="24" y="70" width="40" height="5" rx="2" fill="#00b7ff"/>
+  </svg>
+</template>
+
+<div id="pp-root" style="{{ rootStyle }}">
+
+  <!-- navbar -->
+  <nav style="position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);background:rgba(7,7,9,0.72);border-bottom:1px solid rgba(255,255,255,0.07);">
+    <div style="max-width:1200px;margin:0 auto;padding:15px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <a href="Nabil Gaharu - Portfolio.dc.html" style="display:inline-flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#9a9aa3;"><span style="color:var(--accent);">&larr;</span> All projects</a>
+        <span style="width:1px;height:18px;background:rgba(255,255,255,0.12);"></span>
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;font-size:12px;box-shadow:0 0 18px rgba(255,0,79,0.4);">NG</span>
+        <span style="font-weight:600;font-size:14px;">Nabil Gaharu</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <a href="{{ project.github }}" class="ghost">GitHub &nearr;</a>
+        <a href="{{ project.demo }}" class="prim">Live demo &nearr;</a>
+      </div>
+    </div>
+  </nav>
+
+  <div style="max-width:1200px;margin:0 auto;padding:0 28px;">
+
+    <!-- hero (glow kept subtle & off the image so a dropped shot isn't washed out) -->
+    <div style="position:relative;overflow:hidden;padding:44px 0 36px;">
+      <div style="position:absolute;top:-50%;left:-14%;width:44%;height:190%;border-radius:50%;filter:blur(110px);background:radial-gradient(circle,var(--accent) 0%,transparent 65%);opacity:calc(var(--glow) * 0.26);pointer-events:none;animation:auroraA 22s ease-in-out infinite;"></div>
+      <div class="pp-hero" style="position:relative;display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center;">
+        <div>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:11px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#71717a;">
+            <span style="display:inline-flex;align-items:center;gap:6px;"><svg width="14" height="14" viewBox="0 0 16 16" fill="#8a8a99"><path d="M2 2.75A1.75 1.75 0 0 1 3.75 1h8.5A1.75 1.75 0 0 1 14 2.75v10.5A1.75 1.75 0 0 1 12.25 15H4a2 2 0 0 1-2-2V2.75Zm2 9.75h8.5v-9.5H4v9Z"/></svg>nabilgaharu / <span style="color:#c7c7cd;">{{ project.repo }}</span></span>
+            <span style="padding:2px 9px;border-radius:999px;border:1px solid rgba(255,255,255,0.16);color:#9a9aa3;">Public</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;"><span style="color:#f7c948;">&#9733;</span>38</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;">&#10547;&nbsp;6</span>
+          </div>
+          <div style="margin:18px 0 0;display:flex;align-items:center;gap:11px;">
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;padding:5px 12px;border-radius:999px;color:#fff;background:{{ project.catColorA }};">{{ project.category }}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#71717a;">{{ project.year }}</span>
+          </div>
+          <h1 style="margin:16px 0 0;font-size:clamp(34px,3.6vw,50px);font-weight:700;line-height:1.02;letter-spacing:-0.03em;">{{ project.title }}<span style="font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;color:var(--accent);">.</span></h1>
+          <p style="margin:18px 0 0;max-width:480px;font-size:16px;line-height:1.7;color:#9a9aa3;">{{ project.description }}</p>
+          <div style="margin:22px 0 0;display:flex;flex-wrap:wrap;gap:8px;">
+            <sc-for list="{{ topics }}" as="t" hint-placeholder-count="6"><span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#79c0ff;padding:4px 11px;border-radius:999px;border:1px solid rgba(0,183,255,0.3);background:rgba(0,183,255,0.08);">{{ t }}</span></sc-for>
+          </div>
+        </div>
+        <image-slot id="a-hero" style="position:relative;z-index:1;width:100%;height:330px;" shape="rounded" radius="16" placeholder="Hero screenshot — the Telegram digest in action"></image-slot>
+      </div>
+    </div>
+
+    <!-- tab bar -->
+    <div style="border-bottom:1px solid rgba(255,255,255,0.08);display:flex;gap:26px;">
+      <span class="tab on"><svg width="15" height="15" viewBox="0 0 16 16" fill="var(--accent)"><path d="M4.7 11.7 1 8l3.7-3.7 1 1L3 8l2.7 2.7-1 1Zm6.6 0-1-1L13 8l-2.7-2.7 1-1L15 8l-3.7 3.7Z"/></svg> Code</span>
+      <span class="tab">Screenshots <span class="cnt">3</span></span>
+      <span class="tab">README</span>
+    </div>
+
+    <!-- language bar -->
+    <div style="padding:18px 0 0;">
+      <div style="display:flex;height:9px;border-radius:999px;overflow:hidden;gap:2px;">
+        <sc-for list="{{ langs }}" as="l" hint-placeholder-count="3"><span style="{{ l.barStyle }}"></span></sc-for>
+      </div>
+      <div style="margin:11px 0 0;display:flex;flex-wrap:wrap;gap:18px;">
+        <sc-for list="{{ langs }}" as="l" hint-placeholder-count="3"><span style="display:flex;align-items:center;gap:7px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#9a9aa3;"><span style="{{ l.dotStyle }}"></span>{{ l.name }} <span style="color:#6b6b73;">{{ l.pctLabel }}</span></span></sc-for>
+      </div>
+    </div>
+
+    <!-- two-column -->
+    <div class="pp-cols" style="display:grid;grid-template-columns:1fr 322px;gap:26px;padding:26px 0 44px;">
+      <!-- main -->
+      <div style="min-width:0;display:flex;flex-direction:column;gap:22px;">
+        <!-- file list card -->
+        <div style="border:1px solid rgba(255,255,255,0.09);border-radius:13px;overflow:hidden;background:rgba(255,255,255,0.012);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 20px;background:rgba(255,255,255,0.03);">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+              <span style="flex:none;width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#ff30ff);"></span>
+              <span style="font-size:13px;color:#c7c7cd;font-weight:500;">nabil</span>
+              <span class="fmsg" style="color:#9a9aa3;">refactor: split scraper into per-site modules</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:14px;flex:none;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#71717a;">
+              <span style="color:var(--accent);">a3f9c1e</span>
+              <span>126 commits</span>
+            </div>
+          </div>
+          <sc-for list="{{ files }}" as="f" hint-placeholder-count="8">
+            <a href="{{ project.github }}" class="frow">
+              <sc-if value="{{ f.isFolder }}" hint-placeholder-val="{{ true }}"><svg width="17" height="16" viewBox="0 0 16 16" fill="#6cb6ff" style="flex:none;"><path d="M1.5 3.25c0-.69.56-1.25 1.25-1.25h3.19c.4 0 .77.19 1 .5l.6.8c.05.06.12.1.2.1h5.51c.69 0 1.25.56 1.25 1.25v7.35c0 .69-.56 1.25-1.25 1.25H2.75c-.69 0-1.25-.56-1.25-1.25V3.25Z"/></svg></sc-if>
+              <sc-if value="{{ f.isDoc }}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" stroke-width="1.2" style="flex:none;"><path d="M9 1.75H3.75c-.55 0-1 .45-1 1v10.5c0 .55.45 1 1 1h8.5c.55 0 1-.45 1-1V5.5L9 1.75Z"/><path d="M9 1.75V5.5h4"/></svg></sc-if>
+              <sc-if value="{{ f.isFile }}" hint-placeholder-val="{{ false }}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#8a8a99" stroke-width="1.2" style="flex:none;"><path d="M9 1.75H3.75c-.55 0-1 .45-1 1v10.5c0 .55.45 1 1 1h8.5c.55 0 1-.45 1-1V5.5L9 1.75Z"/><path d="M9 1.75V5.5h4"/></svg></sc-if>
+              <span class="fname">{{ f.name }}</span>
+              <span style="display:flex;align-items:center;gap:20px;min-width:0;">
+                <span class="fmsg" style="justify-self:start;max-width:340px;">{{ f.msg }}</span>
+                <span class="ftime">{{ f.time }}</span>
+              </span>
+            </a>
+          </sc-for>
+        </div>
+
+        <!-- screenshots (below the code / file list) -->
+        <div>
+          <div style="display:flex;align-items:baseline;gap:12px;margin:0 0 14px;">
+            <h3 style="margin:0;font-size:16px;font-weight:600;">Screenshots</h3>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#71717a;">drag your own images onto any slot</span>
+          </div>
+          <div style="display:grid;grid-template-columns:2fr 1fr;grid-auto-rows:150px;gap:14px;">
+            <image-slot id="a-shot-1" style="grid-row:span 2;width:100%;height:100%;" shape="rounded" radius="12" placeholder="Telegram digest screenshot"></image-slot>
+            <image-slot id="a-shot-2" style="width:100%;height:100%;" shape="rounded" radius="12" placeholder="Terminal / run log"></image-slot>
+            <image-slot id="a-shot-3" style="width:100%;height:100%;" shape="rounded" radius="12" placeholder="Listing table"></image-slot>
+          </div>
+        </div>
+
+        <!-- README card -->
+        <div style="border:1px solid rgba(255,255,255,0.09);border-radius:13px;overflow:hidden;background:rgba(255,255,255,0.012);">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 20px;border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.025);">
+            <span style="display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:600;">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#9a9aa3" stroke-width="1.2"><path d="M9 1.75H3.75c-.55 0-1 .45-1 1v10.5c0 .55.45 1 1 1h8.5c.55 0 1-.45 1-1V5.5L9 1.75Z"/><path d="M9 1.75V5.5h4"/></svg>
+              README.md
+            </span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#71717a;">Raw · Blame</span>
+          </div>
+          <div style="padding:26px 30px 30px;">
+            <dc-import name="ProjectReadme" hint-size="100%,1200px"></dc-import>
+          </div>
+        </div>
+      </div>
+
+      <!-- sidebar -->
+      <div style="display:flex;flex-direction:column;gap:18px;min-width:0;">
+        <div class="metric">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#71717a;">About</div>
+          <p style="margin:12px 0 0;font-size:14px;line-height:1.65;color:#b3b3bb;">{{ project.description }}</p>
+          <div style="margin:16px 0 0;display:flex;flex-direction:column;gap:11px;">
+            <a href="{{ project.demo }}" style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:#79c0ff;"><span style="color:var(--accent);">&nearr;</span>{{ project.demoLabel }}</a>
+            <a href="{{ project.github }}" style="display:flex;align-items:center;gap:9px;font-size:13.5px;color:#c7c7cd;"><svg width="15" height="15" viewBox="0 0 16 16" fill="#c7c7cd"><path d="M8 .2a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.5c-2.23.49-2.7-1.07-2.7-1.07-.36-.93-.9-1.18-.9-1.18-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.23 1.87.87 2.33.67.07-.52.28-.87.5-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.83-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.22 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.52.56.83 1.28.83 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 .2Z"/></svg>{{ project.githubLabel }}</a>
+          </div>
+          <div style="margin:18px 0 0;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;gap:10px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#9a9aa3;">
+            <span>License · <span style="color:#c7c7cd;">MIT</span></span>
+            <span>Language · <span style="color:#c7c7cd;">Python</span></span>
+            <span>Year · <span style="color:#c7c7cd;">{{ project.year }}</span></span>
+            <span>Updated · <span style="color:#c7c7cd;">3 days ago</span></span>
+          </div>
+        </div>
+        <div class="metric">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#71717a;">Project metrics</div>
+          <div style="margin:14px 0 0;display:flex;flex-direction:column;">
+            <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid rgba(255,255,255,0.06);">
+                <span style="font-size:13px;color:#9a9aa3;">{{ s.k }}</span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:#f4f4f5;">{{ s.v }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- footer -->
+  <footer style="border-top:1px solid rgba(255,255,255,0.07);">
+    <div style="max-width:1200px;margin:0 auto;padding:22px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:12px;color:#71717a;">
+      <span>© 2026 Nabil Ananta Satria Gaharu</span>
+      <a href="Nabil Gaharu - Portfolio.dc.html" style="color:#9a9aa3;"><span style="color:var(--accent);">&larr;</span> Back to all projects</a>
+    </div>
+  </footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;accentColor&quot;: { &quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#ff004f&quot;, &quot;options&quot;: [&quot;#ff004f&quot;, &quot;#00b7ff&quot;, &quot;#a78bfa&quot;, &quot;#ff7a1a&quot;, &quot;#43b02a&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Theme&quot; },
+  &quot;glowIntensity&quot;: { &quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 0.5, &quot;min&quot;: 0, &quot;max&quot;: 1, &quot;step&quot;: 0.05, &quot;unit&quot;: &quot;&quot;, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Theme&quot; }
+}">
+class Component extends DCLogic {
+  // ─── SWAP THIS OBJECT TO REUSE THE PAGE FOR ANOTHER PROJECT ───
+  project = {
+    repo: 'car-market-scraper',
+    title: 'Web Scraping + Telegram Bot',
+    category: 'Automation',
+    catColorA: '#ff30ff',
+    year: 2024,
+    description: 'Scrapes live car listings across five Indonesian marketplaces and pushes a clean daily price digest straight to a Telegram channel.',
+    demo: '#',
+    demoLabel: 'car-scraper.demo.app',
+    github: '#',
+    githubLabel: 'View source on GitHub',
+  };
+
+  topics = ['Python', 'BeautifulSoup', 'Requests', 'Telegram-Bot-API', 'APScheduler', 'SQLite', 'Docker'];
+
+  langsRaw = [
+    { name: 'Python', pct: 82, color: '#00b7ff' },
+    { name: 'Shell', pct: 11, color: '#43b02a' },
+    { name: 'Dockerfile', pct: 7, color: '#a78bfa' },
+  ];
+
+  stats = [
+    { k: 'Listings tracked', v: '12.4k' },
+    { k: 'Marketplaces', v: '5' },
+    { k: 'Run time', v: '~4 min' },
+    { k: 'Uptime · 90d', v: '99.6%' },
+  ];
+
+  filesRaw = [
+    { type: 'folder', name: 'src', msg: 'refactor: split scraper into per-site modules', time: '3 days ago' },
+    { type: 'folder', name: 'bot', msg: 'feat: daily Telegram digest formatter', time: '3 days ago' },
+    { type: 'folder', name: 'data', msg: 'chore: ignore local cache db', time: '6 days ago' },
+    { type: 'file', name: '.env.example', msg: 'document TELEGRAM_TOKEN + CHAT_ID', time: '2 weeks ago' },
+    { type: 'file', name: 'Dockerfile', msg: 'use slim python 3.11 base image', time: '2 weeks ago' },
+    { type: 'file', name: 'main.py', msg: 'wire scheduler + entrypoint', time: '3 days ago' },
+    { type: 'file', name: 'requirements.txt', msg: 'pin beautifulsoup4 4.12.3', time: '2 weeks ago' },
+    { type: 'doc', name: 'README.md', msg: 'docs: setup, config, screenshots', time: '3 days ago' },
+  ];
+
+  renderVals() {
+    const files = this.filesRaw.map(f => ({
+      ...f,
+      isFolder: f.type === 'folder',
+      isFile: f.type === 'file',
+      isDoc: f.type === 'doc',
+    }));
+
+    const langs = this.langsRaw.map(l => ({
+      ...l,
+      pctLabel: l.pct + '%',
+      barStyle: 'width:' + l.pct + '%;background:' + l.color + ';',
+      dotStyle: 'width:9px;height:9px;border-radius:50%;flex:none;background:' + l.color + ';',
+    }));
+
+    return {
+      rootStyle: {
+        '--accent': this.props.accentColor || '#ff004f',
+        '--accent2': '#00b7ff',
+        '--glow': (this.props.glowIntensity != null ? this.props.glowIntensity : 0.5),
+      },
+      project: this.project,
+      topics: this.topics,
+      langs,
+      stats: this.stats,
+      files,
+    };
+  }
+}
+</script>
+</body>
+</html>

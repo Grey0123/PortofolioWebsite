@@ -88,6 +88,10 @@ PortofolioWebsite/
 │   ├── api.ts                ← typed fetcher to FastAPI
 │   ├── icons.ts              ← string→IconType registry
 │   └── works.ts              ← Work view-model + categories + toWork()
+├── Component/                ← SOURCE art for the nebula easter egg (not served)
+│   ├── *.jpeg                ← hand-added plates, on a flat white matte
+│   └── prep_nebula.py        ← keys the matte to alpha → public/images/nebula/
+├── public/images/nebula/     ← derived, web-ready plates (generated; don't hand-edit)
 ├── supabase/
 │   ├── schema.sql            ← every table + RLS policy (idempotent)
 │   ├── seed.sql              ← initial works rows
@@ -225,6 +229,18 @@ NOT `localhost`.
   `main:app` directly without `api/` being a package.
 - **Windows shell ≠ Unix shell.** Use `copy`/`del`/`Copy-Item`, not
   `cp`/`rm`. Docs in this repo show both.
+- **Nebula plates must be keyed, not dropped in raw.** The source art in
+  `Component/` is JPEG on a flat off-white (247,247,247) matte. The nebula
+  scene composites with `screen`/`multiply` on a near-black ground, so a
+  white rectangle blows the whole frame out. Run
+  `python Component/prep_nebula.py` to regenerate `public/images/nebula/`
+  after changing the art — never reference `Component/*.jpeg` from code.
+  The script also writes `Component/key_preview.png` so you can check the
+  keying against a dark ground (a bad key is invisible on a white one).
+- **`crystal.webp` is generated but disabled** (`PLATE_CRYSTAL = false` in
+  `BlackHoleContact.tsx`). Its blown-out core keys with colour blotches —
+  unpremultiplying a near-white pixel amplifies JPEG chroma error. Fixing it
+  properly means re-exporting that piece with a real alpha channel.
 
 ---
 

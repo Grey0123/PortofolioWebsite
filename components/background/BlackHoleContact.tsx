@@ -24,6 +24,12 @@
 //
 // Textures are baked asynchronously in 40ms steps after mount (mock's
 // _buildNebulaTexAsync) so the first warp lands instantly without jank.
+//
+// The nebula scene also composites four PAINTED plates from
+// public/images/nebula/ over the procedural layers — a full-frame backdrop, a
+// dust ring, a glowing core, and an unused crystal. See the PLATE_* config
+// below for what each one does and why. They load lazily and independently:
+// if none arrive, the scene renders exactly as it did before they existed.
 
 import { useEffect, useRef, useState } from "react";
 
@@ -49,6 +55,131 @@ const WARP_MS = 2500; // mock: warpK over 2.5s
 const WARP_OUT_MS = 1600; // return trip: nebula rushes past, then black, then the hole fades in
 const TEX_W = 640;
 const TEX_H = 360;
+
+/* ------------------------------------------------------------------
+ * Painted plates (public/images/nebula/)
+ *
+ * The procedural fBm textures above give the nebula *motion* — they drift,
+ * breathe and can be stirred by the pointer — but value noise can't invent
+ * the kind of structure a painted plate has (filament hierarchy, dust lane
+ * silhouettes, believable star-forming knots). So we do both: the painted
+ * backdrop supplies structure, the procedural layers supply life on top.
+ *
+ * These are plain <img> loads drawn straight to canvas, NOT next/image.
+ * next/image is a DOM component and gives you an <img> element it controls;
+ * canvas needs a decoded bitmap it can hand to drawImage, so the optimiser
+ * has nothing to do here. That also means the files must already be sized
+ * and compressed on disk — see Component/prep_nebula.py, which derives them
+ * from the source art.
+ *
+ * `crystal` ships DISABLED. It's a faceted solid, and a hard-edged crystal
+ * sitting in a gas cloud reads as fantasy art rather than astrophotography.
+ * Flip PLATE_CRYSTAL to true to try it; the layer is wired up and waiting.
+ * ------------------------------------------------------------------ */
+const PLATE_SRC = {
+  backdrop: "/images/nebula/backdrop.jpg",
+  coreGlow: "/images/nebula/core-glow.webp",
+  ring: "/images/nebula/ring.webp",
+  crystal: "/images/nebula/crystal.webp",
+} as const;
+
+type PlateName = keyof typeof PLATE_SRC;
+
+const PLATE_CRYSTAL = false;
+
+// Pointer-stir smoke buffer, DISABLED.
+//
+// It kept a persistent copy of the composite and relaxed it toward the live
+// frame at 4% each tick, displacing it around pointer swipes so the gas
+// smeared where you dragged. Two problems: the 96% carry-over means every
+// frame is mostly a stale frame, which reads as smeary rather than gaseous;
+// and it turns any hard edge in the composite into a long streak, which is
+// what made the painted plate look like torn paper. With it off, the frame
+// drawn is the live composite.
+//
+// Set true to bring the effect back — all the machinery is intact, and the
+// `dist`/`smoke`/`tmp` fields on Sys exist only to serve it.
+const SMOKE_STIR = false;
+
+// The procedural fBm gas stack — the "fog". Turned OFF: with the painted
+// plates carrying the structure, the fog layers mostly muddied them.
+//
+// Everything else stays: the painted backdrop, the ring and core plates, the
+// central light, the star fields, the vignette and grain. Set true to bring
+// the fog back — every L() call is intact, this flag just makes L a no-op.
+const PROCEDURAL_GAS = false;
+
+// Grading passes applied to the finished composite. Original values were
+// 0.32 / 0.42 / 0.25 — chosen to lift the procedural gas, which is no longer
+// what's being graded. Lower `saturation` to move the frame back toward
+// backdrop.jpg's colour; 0 disables the purple push entirely.
+const FINISH = {
+  contrast: 0.32,
+  saturation: 0.42,
+  grain: 0.25,
+};
+
+// Global damping on the gas layers' motion. The mock ran these fast enough to
+// read as "churning"; over a painted backdrop that same speed reads as the
+// whole sky sliding around. `drift` scales how far layers travel, `speed`
+// scales how fast every oscillator runs (drift, wobble, breathing, spin).
+// Lower = calmer. At speed 0.5 a full drift cycle takes ~2 minutes.
+const GAS_MOTION = {
+  drift: 0.45,
+  speed: 0.5,
+};
+
+// The central light. The reference plate's core is a compact, radiant sphere
+// sitting in a dark dust cavity — not a broad warm wash, which is what the
+// mock's three stacked radial gradients produced. Radii are fractions of the
+// viewport height so the composition holds at any aspect ratio.
+const CORE = {
+  // Hot centre. Kept SMALL and weak deliberately: the core's substance comes
+  // from the painted plate and the star cluster drawn over it. Anything much
+  // above ~0.05 turns into a white disc that erases both.
+  sphere: 0.048,
+  bloom: 0.34, // soft falloff around it — wide and weak
+  ambient: 0.5, // the broad warm wash, well below the sphere in intensity
+  rayReach: 1.05, // how far the ray starburst extends
+  rayAlpha: 0.24,
+  raySpin: 0.0000009,
+  // Stars in the nursery. These are what you resolve when you look closely,
+  // so there need to be enough of them to read as a cluster rather than
+  // scattered dots.
+  clusterCount: 150,
+  clusterSpread: 0.05, // fraction of viewport width
+};
+
+// How hard the painted plates sit in the mix.
+//
+// IMPORTANT — why the backdrop is drawn TWICE. Putting it down as the ground
+// layer alone does almost nothing: fourteen procedural layers go on top, the
+// `screen` group lifts its darks and the `multiply` dust group crushes what's
+// left, and the painting ends up invisible. Measured on the real plate, the
+// correlation between the final frame's luminance and the backdrop's was
+// -0.15 as the ground layer — statistically indistinguishable from not
+// drawing it at all.
+//
+// So: `backdrop` lays the colour foundation underneath, then `backdropTop`
+// re-asserts the same plate over the finished gas stack, which is what
+// actually makes its structure readable (correlation 0.87 at 0.40). The
+// finishing passes after it — overlay contrast, saturation, grain — then run
+// over both families and bind them together.
+//
+// To rebalance: `backdropTop` is the one number that matters. Higher =
+// photo-led, lower = procedural-led. Past ~0.55 the animation stops reading.
+const PLATE_ALPHA = {
+  backdrop: 0.72, // ground pass, under the gas
+  backdropTop: 0.4, // re-assert pass, over the gas ← tune this one
+  proceduralBase: 0.46, // was 0.97 when the procedural wash WAS the ground
+  // Global scale on the procedural `screen` group while a backdrop is in play.
+  // Those layers were balanced against a flat near-black ground and overdrive
+  // once there's a lit painting under them.
+  screenMix: 0.75,
+  coreGlow: 0.44,
+  ring: 0.34,
+  crystal: 0.34,
+} as const;
 
 /* ============================================================
  * Types for the mutable system (kept loose — this is a port of
@@ -99,6 +230,11 @@ type Sys = {
   smoke: HTMLCanvasElement | null;
   tmp: HTMLCanvasElement | null;
   smokeInit: boolean;
+  // Painted plates, populated asynchronously. A missing key just means that
+  // layer is skipped this frame — the scene degrades to pure-procedural
+  // rather than failing, so a slow network or a 404 can never break the
+  // easter egg.
+  plates: Partial<Record<PlateName, HTMLImageElement>>;
   grainPat: CanvasPattern | null;
   lm: Record<string, LayerMotion>;
   dist: Dist[];
@@ -223,6 +359,71 @@ function makeNebulaTex(
   return cv;
 }
 
+/**
+ * Ray starburst — the spokes of light radiating from the core.
+ *
+ * Baked once into a texture rather than drawn per-frame. Fifteen gradient-
+ * filled wedges is fifteen gradient allocations every frame if done live; as a
+ * texture it's a single rotating drawImage, and rotation is the only animation
+ * it needs.
+ *
+ * The rays are deliberately uneven in length, width and spacing. Evenly spaced
+ * identical spokes read as a cartoon sunburst; real light scattered through
+ * dust is ragged.
+ */
+function makeRayTex(size: number, seed: number, count = 30): HTMLCanvasElement {
+  const src = document.createElement("canvas");
+  src.width = src.height = size;
+  const c = src.getContext("2d")!;
+
+  let a = seed | 0;
+  const rand = () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+
+  const R = size / 2;
+  c.translate(R, R);
+  c.globalCompositeOperation = "lighter";
+  for (let i = 0; i < count; i++) {
+    const ang = (i / count) * Math.PI * 2 + (rand() - 0.5) * 0.6;
+    const len = R * (0.25 + rand() * 0.75);
+    // Narrow. An early pass used widths up to 0.065R and the result was a
+    // lens flare — light scattered through dust is threadlike, and the
+    // impression of "rays" comes from many fine streaks, not a few fat wedges.
+    const wid = R * (0.004 + rand() * 0.016);
+    // Uneven brightness per ray, for the same reason.
+    const k = 0.35 + rand() * 0.65;
+    const g = c.createLinearGradient(0, 0, len, 0);
+    g.addColorStop(0, `rgba(255,242,220,${0.8 * k})`);
+    g.addColorStop(0.2, `rgba(255,206,150,${0.26 * k})`);
+    g.addColorStop(1, "rgba(255,176,116,0)");
+    c.save();
+    c.rotate(ang);
+    c.fillStyle = g;
+    // Tapered wedge: wide at the core, pinched to a near-point at the tip.
+    c.beginPath();
+    c.moveTo(0, -wid);
+    c.lineTo(len, -wid * 0.12);
+    c.lineTo(len, wid * 0.12);
+    c.lineTo(0, wid);
+    c.closePath();
+    c.fill();
+    c.restore();
+  }
+
+  // Blur pass. Hard-edged wedges look like a vector star; a few px of blur is
+  // what turns them into light scattering through gas.
+  const out = document.createElement("canvas");
+  out.width = out.height = size;
+  const o = out.getContext("2d")!;
+  o.filter = `blur(${Math.max(2, size / 110)}px)`;
+  o.drawImage(src, 0, 0);
+  return out;
+}
+
 // The mock's full texture list (_nebTexList) — names and stops verbatim.
 function nebTexList(): [string, () => HTMLCanvasElement][] {
   return [
@@ -264,6 +465,7 @@ function nebTexList(): [string, () => HTMLCanvasElement][] {
       [0, 255, 200, 220, 0], [0.72, 255, 200, 225, 0],
       [0.86, 255, 220, 235, 0.35], [1, 255, 246, 250, 0.75],
     ], { scale: 10.5, warp: 2, lo: 0.4, span: 0.5 })],
+    ["rays", () => makeRayTex(768, 424)],
     ["grain", () => {
       const cv = document.createElement("canvas");
       cv.width = 128;
@@ -322,6 +524,7 @@ export default function BlackHoleContact({
       last: 0, raf: 0, reduced: prefersReduced, mobile: false,
       nebTex: null, texWip: null, neb: null,
       nebBase: null, smoke: null, tmp: null, smokeInit: false,
+      plates: {},
       grainPat: null, lm: {}, dist: [], pvx: 0, pvy: 0,
     };
     sysRef.current = sys;
@@ -731,6 +934,32 @@ export default function BlackHoleContact({
       window.setTimeout(step, 0);
     };
 
+    // Painted plates load in parallel with the texture bake. We deliberately
+    // do NOT await them anywhere: whichever plates have arrived get drawn,
+    // the rest are skipped, and a later frame picks them up. decode() before
+    // storing matters — a freshly-loaded image can still cost a synchronous
+    // decode on its first drawImage, which would drop a frame right at the
+    // moment the warp lands.
+    const loadPlates = () => {
+      const names = (Object.keys(PLATE_SRC) as PlateName[]).filter(
+        (n) => n !== "crystal" || PLATE_CRYSTAL,
+      );
+      for (const name of names) {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = PLATE_SRC[name];
+        const store = () => {
+          if (sysRef.current) sys.plates[name] = img;
+        };
+        // decode() rejects on some browsers if the element isn't attached to
+        // a document yet; onload is the fallback that always fires.
+        img.decode?.().then(store).catch(() => {
+          if (img.complete) store();
+          else img.onload = store;
+        });
+      }
+    };
+
     const buildNebulaTexSync = () => {
       if (sys.nebTex) return;
       const wip = sys.texWip || (sys.texWip = {});
@@ -774,9 +1003,9 @@ export default function BlackHoleContact({
           r: 1.2 + Math.random() * 1.7, tw: Math.random() * 6.28, col: cols[i % 3],
         });
       }
-      for (let i = 0; i < 90; i++) {
+      for (let i = 0; i < Math.round(CORE.clusterCount * mob); i++) {
         const a = Math.random() * 6.28;
-        const rr = Math.abs(gauss()) * w * 0.06;
+        const rr = Math.abs(gauss()) * w * CORE.clusterSpread;
         neb.cluster.push({
           x: fx + Math.cos(a) * rr, y: fy + Math.sin(a) * rr * 0.8,
           s: 0.5 + Math.random() * 1.3, al: 0.3 + Math.random() * 0.6,
@@ -818,11 +1047,26 @@ export default function BlackHoleContact({
       const tmp = sys.tmp!;
       const b = nebBase.getContext("2d")!;
 
-      // organic per-layer motion: drift + rotation wobble + breathing scale
-      const L = (
-        img: HTMLCanvasElement, name: string, alpha: number, _depth: number,
-        o: { spin?: number; baseRot?: number; cover?: number; cx?: number; cy?: number; flipX?: boolean; flipY?: boolean } = {},
-      ) => {
+      // Per-layer motion parameters. Each named layer gets its own random
+      // drift speed, rotation wobble, breathing scale and opacity flicker, so
+      // no two layers move in lockstep — that's what stops a stack of
+      // scrolling textures from reading as wallpaper.
+      type LayerOpts = {
+        spin?: number; baseRot?: number; cover?: number;
+        cx?: number; cy?: number; flipX?: boolean; flipY?: boolean;
+        // Scales the random translation drift. Parallax: the further a layer
+        // is meant to be, the less it should travel across the frame.
+        driftMul?: number;
+        // Pins rotation at 0. REQUIRED for any full-frame opaque plate.
+        // `rot` is driven by `t * spin` where t is performance.now(), so it
+        // accumulates without bound — a "barely moving" 0.0000012 rad/ms is
+        // 41° after ten minutes. A rotated rectangle no longer covers the
+        // viewport, and its corners cut hard diagonal wedges across the frame.
+        // Semi-transparent noise layers get away with it; a photo does not.
+        noRot?: boolean;
+      };
+
+      const lmFor = (name: string): LayerMotion => {
         let m = sys.lm[name];
         if (!m) {
           m = sys.lm[name] = {
@@ -835,18 +1079,109 @@ export default function BlackHoleContact({
             oa: 0.05 + Math.random() * 0.09, fo: 0.000007 + Math.random() * 0.00001,
           };
         }
-        const vx = Math.sin(t * m.f1 + m.p1) * m.dx + Math.sin(t * m.f2 + m.p3) * m.dx * 0.8;
-        const vy = Math.cos(t * m.f1 * 0.93 + m.p2) * m.dy + Math.cos(t * m.f2 * 1.13 + m.p1) * m.dy * 0.8;
-        const rot = (o.spin ? t * o.spin : t * m.rot) + Math.sin(t * m.fw + m.p2) * m.wob + (o.baseRot || 0);
-        const s = (1 + Math.sin(t * m.fsc + m.p3) * m.sc) * (o.cover || 1.45);
-        b.globalAlpha = alpha * (1 - m.oa + Math.sin(t * m.fo + m.p1) * m.oa);
+        return m;
+      };
+
+      // Shared by the procedural layers (L) and the painted plates (P) so both
+      // families drift with identical character — a plate that moved to a
+      // different rhythm than the gas around it would separate visually.
+      const drift = (m: LayerMotion, o: LayerOpts) => {
+        const k = (o.driftMul != null ? o.driftMul : 1) * GAS_MOTION.drift;
+        // Scaling time rather than each frequency slows every oscillator on
+        // this layer — drift, wobble, breathing, spin — by one factor, so the
+        // layer keeps its character and just moves through it more slowly.
+        const tt = t * GAS_MOTION.speed;
+        return {
+          vx: (Math.sin(tt * m.f1 + m.p1) * m.dx + Math.sin(tt * m.f2 + m.p3) * m.dx * 0.8) * k,
+          vy: (Math.cos(tt * m.f1 * 0.93 + m.p2) * m.dy + Math.cos(tt * m.f2 * 1.13 + m.p1) * m.dy * 0.8) * k,
+          // Bounded rotation. `t * m.rot` accumulated forever — after a minute
+          // or so a layer has turned far enough that its rectangle no longer
+          // covers the viewport, and its corners cut visible diagonal lines
+          // across the frame. Worse on wide screens, where there's less
+          // vertical margin to give away. An oscillation looks the same at any
+          // instant (slow, aimless turning) but can never exceed ±0.12 rad,
+          // which every layer's cover factor comfortably absorbs.
+          //
+          // Explicit `spin` is left unbounded on purpose — it's only used on
+          // plates drawn far larger than the viewport, or with transparent
+          // edges, where continuous wheeling is the point and safe.
+          rot: o.noRot
+            ? 0
+            : (o.spin ? tt * o.spin : Math.sin(tt * m.f2 * 0.5 + m.p3) * 0.12) +
+              Math.sin(tt * m.fw + m.p2) * m.wob +
+              (o.baseRot || 0),
+          breath: 1 + Math.sin(tt * m.fsc + m.p3) * m.sc,
+          fade: 1 - m.oa + Math.sin(tt * m.fo + m.p1) * m.oa,
+        };
+      };
+
+      // Global scale applied to every L() alpha. Set around the `screen` group
+      // so the painted backdrop isn't drowned by additive gas; reset to 1 for
+      // the `multiply` dust group, whose job is to carve dark lanes back INTO
+      // the frame — weakening it would work against the painting, not for it.
+      let procMix = 1;
+
+      // L — procedural texture layer. The fBm canvases are generated at
+      // TEX_W×TEX_H and stretched to the viewport on purpose: value noise has
+      // no "correct" scale, and stretching it costs nothing.
+      const L = (
+        img: HTMLCanvasElement, name: string, alpha: number, _depth: number,
+        o: LayerOpts = {},
+      ) => {
+        if (!PROCEDURAL_GAS) return;
+        const m = lmFor(name);
+        const d = drift(m, o);
+        const s = d.breath * (o.cover || 1.45);
+        b.globalAlpha = alpha * procMix * d.fade;
         b.save();
-        b.translate((o.cx != null ? o.cx : w / 2) + vx, (o.cy != null ? o.cy : h / 2) + vy);
-        b.rotate(rot);
+        b.translate((o.cx != null ? o.cx : w / 2) + d.vx, (o.cy != null ? o.cy : h / 2) + d.vy);
+        b.rotate(d.rot);
         b.scale(o.flipX ? -s : s, o.flipY ? -s : s);
         b.drawImage(img, -w / 2, -h / 2, w, h);
         b.restore();
         b.globalAlpha = 1;
+      };
+
+      // P — painted plate layer. Unlike L, aspect ratio MUST be respected
+      // here: a stretched photograph reads as a stretched photograph, while
+      // stretched noise reads as noise. Two sizing modes:
+      //
+      //   fit: "cover"  → fill the viewport like CSS background-size: cover
+      //                   (used for the full-frame backdrop)
+      //   fit: "span"   → draw at `span` × viewport width, aspect preserved
+      //                   (used for the discrete ring / core objects)
+      //
+      // Returns false when the plate hasn't loaded, so callers can fall back.
+      const P = (
+        name: PlateName, key: string, alpha: number,
+        o: LayerOpts & { fit?: "cover" | "span"; span?: number } = {},
+      ) => {
+        const img = sys.plates[name];
+        if (!img || !img.width || !img.height) return false;
+        const m = lmFor(key);
+        const d = drift(m, o);
+
+        let dw: number;
+        if (o.fit === "cover") {
+          // The extra cover factor leaves room for the drift + breathing to
+          // move the plate without exposing an edge at the viewport border.
+          const k = Math.max(w / img.width, h / img.height) * (o.cover || 1.14);
+          dw = img.width * k;
+        } else {
+          dw = w * (o.span || 1);
+        }
+        const dh = dw * (img.height / img.width);
+        const s = d.breath;
+
+        b.globalAlpha = alpha * d.fade;
+        b.save();
+        b.translate((o.cx != null ? o.cx : w / 2) + d.vx, (o.cy != null ? o.cy : h / 2) + d.vy);
+        b.rotate(d.rot);
+        b.scale(o.flipX ? -s : s, o.flipY ? -s : s);
+        b.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+        b.restore();
+        b.globalAlpha = 1;
+        return true;
       };
 
       b.globalCompositeOperation = "source-over";
@@ -855,8 +1190,28 @@ export default function BlackHoleContact({
       b.fillRect(0, 0, w, h);
       const fx = w * 0.6;
       const fy = h * 0.42;
-      L(tex.base, "base", 0.97, 0.12);
+
+      // ── ground: painted backdrop, then the procedural wash over it ──
+      // Order matters. The backdrop goes down first as opaque structure; the
+      // procedural `base` wash then goes over it at reduced alpha, which is
+      // what ties the two families together — without it the painting sits
+      // there statically behind moving gas and the seam is obvious.
+      const hasBackdrop = P("backdrop", "plateBg", PLATE_ALPHA.backdrop, {
+        fit: "cover",
+        // The furthest thing in the scene, so it gets the least motion of
+        // anything: no rotation at all (see `noRot`) and a third of the usual
+        // drift. At full drift a cover-fitted plate slides visibly behind the
+        // gas and gives away that it's a flat image being panned.
+        // cover 1.3 leaves margin for that drift plus the breathing scale, so
+        // no frame ever exposes the plate's edge.
+        noRot: true,
+        driftMul: 0.34,
+        cover: 1.3,
+      });
+      L(tex.base, "base", hasBackdrop ? PLATE_ALPHA.proceduralBase : 0.97, 0.12);
+
       b.globalCompositeOperation = "screen";
+      if (hasBackdrop) procMix = PLATE_ALPHA.screenMix;
       L(tex.pink, "pinkA", 0.9, 0.3);
       L(tex.pink, "pinkB", 0.4, 0.45, { flipX: true });
       L(tex.pink, "pinkC", 0.32, 0.5, { baseRot: Math.PI, cover: 1.7 });
@@ -869,6 +1224,7 @@ export default function BlackHoleContact({
       L(tex.knots, "knots", 0.45, 0.42);
       L(tex.knots, "knotsB", 0.3, 0.5, { flipX: true, cover: 1.7 });
       b.globalCompositeOperation = "multiply";
+      procMix = 1; // dust carves the dark lanes — keep it at full strength
       L(tex.dust, "dustA", 0.85, 0.5);
       L(tex.dust2, "dustB", 0.8, 0.58);
       L(tex.dust2, "fgA", 0.65, 1, { flipX: true, cover: 1.8 });
@@ -876,41 +1232,145 @@ export default function BlackHoleContact({
       // stellar nursery — warm volumetric glow
       b.globalCompositeOperation = "screen";
       const pulse = 1 + 0.04 * Math.sin(t * 0.0004);
+
+      // ── painted ring: a dust torus wheeling around the nursery ──
+      // Deliberately drawn AFTER the multiply dust group, not with the earlier
+      // screen layers: the dust passes were crushing it to nothing. Screen
+      // (not source-over) because emission nebulae are additive in reality —
+      // gas glows, it doesn't occlude. Two passes at different scales and
+      // counter-rotations read as depth rather than one flat decal.
+      P("ring", "plateRingA", PLATE_ALPHA.ring, {
+        fit: "span", span: 1.55, cx: fx, cy: fy, spin: 0.0000055,
+      });
+      // The second pass draws at 2.35× viewport width — the most expensive
+      // blit in the frame. Phones drop it; one ring still reads correctly.
+      if (!sys.mobile) {
+        P("ring", "plateRingB", PLATE_ALPHA.ring * 0.55, {
+          fit: "span", span: 2.35, cx: fx, cy: fy, spin: -0.0000031, flipX: true,
+        });
+      }
+
+      // NOTE: the painted core plate used to draw here. It moved down to the
+      // central-light block, after the backdrop's second pass — drawn here its
+      // detail was being flattened by that pass, which is what made the core
+      // read as a featureless glow.
+      if (PLATE_CRYSTAL) {
+        P("crystal", "plateCrystal", PLATE_ALPHA.crystal * pulse, {
+          fit: "span", span: 0.34, cx: fx, cy: fy, spin: 0.0000024,
+        });
+      }
+      // Ambient warmth only — the broad, low wash that says "there is a light
+      // somewhere in here". The light ITSELF is drawn much later, after the
+      // backdrop's second pass. Keeping the two apart is the whole trick: a
+      // wash this wide can't read as a source, and a source drawn this early
+      // gets dimmed by everything that follows.
       const cg1 = b.createRadialGradient(fx, fy, 0, fx, fy, h * 0.55 * pulse);
-      cg1.addColorStop(0, "rgba(242,190,178,0.22)");
-      cg1.addColorStop(0.4, "rgba(216,158,156,0.08)");
+      cg1.addColorStop(0, `rgba(242,190,178,${0.22 * CORE.ambient})`);
+      cg1.addColorStop(0.4, `rgba(216,158,156,${0.08 * CORE.ambient})`);
       cg1.addColorStop(1, "rgba(216,158,156,0)");
       b.fillStyle = cg1;
       b.fillRect(0, 0, w, h);
-      b.save();
-      b.translate(fx, fy);
-      b.rotate(-0.5);
-      b.scale(1, 0.38);
-      const cg3 = b.createRadialGradient(0, 0, 0, 0, 0, h * 0.5 * pulse);
-      cg3.addColorStop(0, "rgba(255,232,205,0.3)");
-      cg3.addColorStop(0.45, "rgba(238,184,168,0.1)");
-      cg3.addColorStop(1, "rgba(238,184,168,0)");
-      b.fillStyle = cg3;
-      b.fillRect(-w, -h, w * 2, h * 2);
-      b.restore();
-      const cg2 = b.createRadialGradient(fx, fy, 0, fx, fy, h * 0.16 * pulse);
-      cg2.addColorStop(0, "rgba(255,248,230,0.85)");
-      cg2.addColorStop(0.3, "rgba(248,216,174,0.38)");
-      cg2.addColorStop(1, "rgba(240,205,160,0)");
-      b.fillStyle = cg2;
-      b.fillRect(0, 0, w, h);
       b.globalCompositeOperation = "multiply";
       L(tex.dust2, "coreDust", 0.45, 0.62, { cover: 1.5, baseRot: 0.6 });
+
+      // ── backdrop, second pass: re-assert the painting OVER the gas ──
+      // This is the pass that actually makes the plate visible (see the
+      // PLATE_ALPHA comment). Same drift key as the ground pass — "plateBg" —
+      // so both passes move as one plate rather than sliding against each
+      // other, which would read as a double exposure. It goes before the
+      // overlay/saturation/grain finishing on purpose: those passes then treat
+      // the painting and the gas as one image, which is what stops the photo
+      // from looking pasted on.
+      b.globalCompositeOperation = "source-over";
+      P("backdrop", "plateBg", PLATE_ALPHA.backdropTop, {
+        fit: "cover", noRot: true, driftMul: 0.34, cover: 1.3,
+      });
+
+      // ── the central light ──
+      // Drawn LAST, after the backdrop's second pass, so nothing dims it.
+      //
+      // The design rule here: at a glance this should read as "a light", but
+      // looking closely it must resolve into STRUCTURE — knots of gas and a
+      // star cluster, the way backdrop.jpg's core does. A smooth radial
+      // gradient fails that test: it reads as a light from across the room and
+      // as a blurry white circle up close. So the bulk of the core is the
+      // painted core-glow plate, which has real filament detail, and the
+      // gradients are pulled right back to doing only what a painting can't:
+      // supplying the hot centre and the bloom around it.
+
+      // Breathing. Two detuned sines rather than one, so the throb never
+      // settles into an obvious beat — a single sine reads as a pulsing UI
+      // element, two read as something alive.
+      const corePulse =
+        1 + 0.17 * Math.sin(t * 0.00042) + 0.08 * Math.sin(t * 0.00097 + 1.7);
+
+      // Painted core, moved here from before the backdrop pass so its detail
+      // isn't flattened by it. `screen` keeps its dark filaments dark, which
+      // is exactly the structure that survives zooming in.
+      b.globalCompositeOperation = "screen";
+      P("coreGlow", "plateCore", PLATE_ALPHA.coreGlow * corePulse, {
+        fit: "span", span: 1.05, cx: fx - w * 0.035, cy: fy + h * 0.03, spin: -0.0000018,
+      });
+
+      // `lighter` is straight additive: light adds to what's behind it, so the
+      // painted detail still shows through the falloff instead of being
+      // painted over.
+      b.globalCompositeOperation = "lighter";
+
+      // Rays first, so the hot centre lands on top of where they converge and
+      // hides their common origin — otherwise you can see the wedges meeting
+      // at a point. Reach breathes with the pulse; alpha breathes harder, so
+      // the throb reads as brightness rather than as the whole thing scaling.
+      if (tex.rays) {
+        const reach = h * CORE.rayReach * (1 + (corePulse - 1) * 0.35);
+        b.save();
+        b.globalAlpha = Math.min(1, CORE.rayAlpha * corePulse);
+        b.translate(fx, fy);
+        b.rotate(t * CORE.raySpin);
+        b.drawImage(tex.rays, -reach, -reach, reach * 2, reach * 2);
+        b.restore();
+        b.globalAlpha = 1;
+      }
+
+      // Bloom: wide and weak. Its job is atmosphere around the core, not the
+      // core itself — at higher alpha this is the "big sphere of light" that
+      // swallows all the painted detail underneath.
+      const bloom = b.createRadialGradient(fx, fy, 0, fx, fy, h * CORE.bloom * corePulse);
+      bloom.addColorStop(0, `rgba(255,226,180,${0.2 * corePulse})`);
+      bloom.addColorStop(0.35, `rgba(248,186,140,${0.07 * corePulse})`);
+      bloom.addColorStop(1, "rgba(240,170,120,0)");
+      b.fillStyle = bloom;
+      b.fillRect(0, 0, w, h);
+
+      // Hot centre: small. This is the only part allowed to clip to white, and
+      // it's roughly the size of the star cluster drawn over it later — so
+      // what you see up close is stars in a bright knot, not a white disc.
+      const sphere = b.createRadialGradient(fx, fy, 0, fx, fy, h * CORE.sphere * corePulse);
+      sphere.addColorStop(0, `rgba(255,252,244,${0.8 * corePulse})`);
+      sphere.addColorStop(0.35, `rgba(255,236,198,${0.42 * corePulse})`);
+      sphere.addColorStop(0.7, `rgba(252,206,146,${0.16 * corePulse})`);
+      sphere.addColorStop(1, "rgba(248,190,130,0)");
+      b.fillStyle = sphere;
+      b.fillRect(0, 0, w, h);
+
+      b.globalAlpha = 1;
+
       // local-contrast + chroma restoration + grain
+      //
+      // These were tuned to rescue the procedural gas, which came out flat and
+      // desaturated. A painted plate needs far less help — in particular the
+      // saturation pass is what pushes the frame magenta relative to
+      // backdrop.jpg, so if the colour is drifting from the reference, that's
+      // the number to pull down first.
       b.globalCompositeOperation = "overlay";
-      b.globalAlpha = 0.32;
+      b.globalAlpha = FINISH.contrast;
       b.drawImage(nebBase, 0, 0);
       b.globalCompositeOperation = "saturation";
-      b.globalAlpha = 0.42;
+      b.globalAlpha = FINISH.saturation;
       b.fillStyle = "hsl(285, 85%, 55%)";
       b.fillRect(0, 0, w, h);
       b.globalCompositeOperation = "soft-light";
-      b.globalAlpha = 0.25;
+      b.globalAlpha = FINISH.grain;
       if (!sys.grainPat) sys.grainPat = b.createPattern(tex.grain, "repeat");
       if (sys.grainPat) {
         b.fillStyle = sys.grainPat;
@@ -920,51 +1380,53 @@ export default function BlackHoleContact({
       b.globalCompositeOperation = "source-over";
 
       // smoke buffer: relax toward composite, smear around pointer swipes
-      const sc = smoke.getContext("2d")!;
-      if (!sys.smokeInit) {
-        sc.drawImage(nebBase, 0, 0);
-        sys.smokeInit = true;
-      }
-      sc.globalAlpha = 0.04;
-      sc.drawImage(nebBase, 0, 0);
-      sc.globalAlpha = 1;
-      if (sys.dist.length) {
-        const tc = tmp.getContext("2d")!;
-        for (const d of sys.dist) {
-          d.life -= 0.028;
-          if (d.life <= 0) continue;
-          const k = d.life * d.life;
-          const ox = (d.vx * 0.55 - d.vy * 0.26 * d.curl) * k;
-          const oy = (d.vy * 0.55 + d.vx * 0.26 * d.curl) * k;
-          const r = d.r;
-          tc.clearRect(0, 0, 320, 320);
-          tc.drawImage(smoke, d.x - r, d.y - r, r * 2, r * 2, 0, 0, r * 2, r * 2);
-          sc.save();
-          sc.beginPath();
-          sc.arc(d.x, d.y, r, 0, Math.PI * 2);
-          sc.clip();
-          sc.globalAlpha = 0.4;
-          sc.drawImage(tmp, 0, 0, r * 2, r * 2, d.x - r + ox * 0.45, d.y - r + oy * 0.45, r * 2, r * 2);
-          sc.restore();
-          sc.save();
-          sc.beginPath();
-          sc.arc(d.x, d.y, r * 0.75, 0, Math.PI * 2);
-          sc.clip();
-          sc.globalAlpha = 0.4;
-          sc.translate(d.x, d.y);
-          sc.rotate(d.curl * 0.1 * k);
-          sc.drawImage(tmp, 0, 0, r * 2, r * 2, -r + ox * 0.7, -r + oy * 0.7, r * 2, r * 2);
-          sc.restore();
-          sc.save();
-          sc.beginPath();
-          sc.arc(d.x, d.y, r * 0.5, 0, Math.PI * 2);
-          sc.clip();
-          sc.globalAlpha = 0.7;
-          sc.drawImage(tmp, 0, 0, r * 2, r * 2, d.x - r + ox, d.y - r + oy, r * 2, r * 2);
-          sc.restore();
-          sc.globalAlpha = 1;
+      if (SMOKE_STIR) {
+        const sc = smoke.getContext("2d")!;
+        if (!sys.smokeInit) {
+          sc.drawImage(nebBase, 0, 0);
+          sys.smokeInit = true;
         }
-        sys.dist = sys.dist.filter((d) => d.life > 0);
+        sc.globalAlpha = 0.04;
+        sc.drawImage(nebBase, 0, 0);
+        sc.globalAlpha = 1;
+        if (sys.dist.length) {
+          const tc = tmp.getContext("2d")!;
+          for (const d of sys.dist) {
+            d.life -= 0.028;
+            if (d.life <= 0) continue;
+            const k = d.life * d.life;
+            const ox = (d.vx * 0.55 - d.vy * 0.26 * d.curl) * k;
+            const oy = (d.vy * 0.55 + d.vx * 0.26 * d.curl) * k;
+            const r = d.r;
+            tc.clearRect(0, 0, 320, 320);
+            tc.drawImage(smoke, d.x - r, d.y - r, r * 2, r * 2, 0, 0, r * 2, r * 2);
+            sc.save();
+            sc.beginPath();
+            sc.arc(d.x, d.y, r, 0, Math.PI * 2);
+            sc.clip();
+            sc.globalAlpha = 0.4;
+            sc.drawImage(tmp, 0, 0, r * 2, r * 2, d.x - r + ox * 0.45, d.y - r + oy * 0.45, r * 2, r * 2);
+            sc.restore();
+            sc.save();
+            sc.beginPath();
+            sc.arc(d.x, d.y, r * 0.75, 0, Math.PI * 2);
+            sc.clip();
+            sc.globalAlpha = 0.4;
+            sc.translate(d.x, d.y);
+            sc.rotate(d.curl * 0.1 * k);
+            sc.drawImage(tmp, 0, 0, r * 2, r * 2, -r + ox * 0.7, -r + oy * 0.7, r * 2, r * 2);
+            sc.restore();
+            sc.save();
+            sc.beginPath();
+            sc.arc(d.x, d.y, r * 0.5, 0, Math.PI * 2);
+            sc.clip();
+            sc.globalAlpha = 0.7;
+            sc.drawImage(tmp, 0, 0, r * 2, r * 2, d.x - r + ox, d.y - r + oy, r * 2, r * 2);
+            sc.restore();
+            sc.globalAlpha = 1;
+          }
+          sys.dist = sys.dist.filter((d) => d.life > 0);
+        }
       }
       ctx.setTransform(sys.dpr, 0, 0, sys.dpr, 0, 0);
       if (zoom > 1) {
@@ -972,7 +1434,9 @@ export default function BlackHoleContact({
         ctx.scale(zoom, zoom);
         ctx.translate(-w / 2, -h / 2);
       }
-      ctx.drawImage(smoke, 0, 0);
+      // With stirring off the smoke buffer is never written, so blit the live
+      // composite instead — otherwise the frame would be a blank canvas.
+      ctx.drawImage(SMOKE_STIR ? smoke : nebBase, 0, 0);
 
       // vignette
       const vg = ctx.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, w * 0.72);
@@ -1115,7 +1579,8 @@ export default function BlackHoleContact({
     // Pointer stirring for the nebula (mock's pointermove handler). The
     // canvas is behind the content, so we listen on window and map coords.
     const onMove = (e: PointerEvent) => {
-      if (sys.scene !== "nebula") return;
+      // Nothing consumes sys.dist while stirring is off — don't accumulate it.
+      if (!SMOKE_STIR || sys.scene !== "nebula") return;
       const rect = canvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
@@ -1146,8 +1611,31 @@ export default function BlackHoleContact({
     };
     window.addEventListener("keydown", onKey);
 
-    // Pre-bake nebula textures in the background so the first warp is instant.
+    // Pre-bake nebula textures and fetch the painted plates in the background
+    // so the first warp lands instantly. Both are deferred past mount: the
+    // contact section is below the fold, and neither the bake (CPU) nor the
+    // plates (~700KB for the three enabled ones) should compete with the
+    // initial page render.
     const bakeTimer = window.setTimeout(buildNebulaTexAsync, 300);
+    const plateTimer = window.setTimeout(loadPlates, 300);
+
+    // DEV SHORTCUT: `?nebula=1` boots straight into the nebula scene, skipping
+    // the scroll-down-and-click-the-hole ritual. Iterating on the nebula is
+    // otherwise painful — every reload costs a 2.5s warp animation before you
+    // can see whether a tweak worked.
+    //
+    // Guarded on NODE_ENV so it's dead code in the Vercel bundle: a visitor
+    // hitting nabilgaharu.com/?nebula=1 should not skip the easter egg.
+    if (
+      process.env.NODE_ENV !== "production" &&
+      !prefersReduced &&
+      new URLSearchParams(window.location.search).has("nebula")
+    ) {
+      sys.scene = "nebula";
+      sys.nebulaBorn = performance.now();
+      setUiScene("nebula");
+      veilRef.current?.(true); // hide the form, same as a real warp-in
+    }
 
     if (prefersReduced) staticFrame();
 
@@ -1158,6 +1646,7 @@ export default function BlackHoleContact({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("keydown", onKey);
       window.clearTimeout(bakeTimer);
+      window.clearTimeout(plateTimer);
       sysRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
