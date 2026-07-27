@@ -43,6 +43,13 @@ class Category(BaseModel):
 # WORKS (portfolio projects)
 # =============================================================
 class Work(BaseModel):
+    """
+    A project as it appears in the portfolio GRID. Deliberately lean — this
+    shape is returned N times by GET /works, so every field added here is
+    paid for on every card. The long-form content lives in ProjectDetail
+    below, fetched one project at a time.
+    """
+
     title: str
     description: str
     # Was a Literal of five fixed strings. It's now a free `str` because the
@@ -55,6 +62,40 @@ class Work(BaseModel):
     href: Optional[str] = None
     github: Optional[str] = None
     featured: bool = False
+    # URL segment for /projects/[slug]. Present in the LIST payload because
+    # each card needs it to build its link — but note that `body_md` and the
+    # gallery deliberately are NOT here.
+    slug: str
+
+
+class ProjectImage(BaseModel):
+    """One gallery image on a project detail page."""
+
+    # A path under /public ("/images/projects/foo/bar.png") or a full URL.
+    image_path: str
+    alt: str
+    caption: Optional[str] = None
+
+
+class ProjectDetail(Work):
+    """
+    The full project, returned by GET /works/{slug} — one project per request.
+
+    Inherits every field of `Work` and adds the heavy content. Subclassing
+    rather than redeclaring means the grid and the detail page can never
+    disagree about what a `title` or `category` is: change Work, both move.
+    """
+
+    # Long-form markdown write-up. None when not written yet — the page
+    # renders an empty state rather than 404ing, so a project can go live
+    # with just a summary.
+    body_md: Optional[str] = None
+    role: Optional[str] = None
+    timeframe: Optional[str] = None
+    outcome: Optional[str] = None
+    # Ordered by sort_order. Defaults to [] so a project with no gallery
+    # validates fine.
+    images: list[ProjectImage] = []
 
 
 # =============================================================

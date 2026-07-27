@@ -63,6 +63,16 @@ CREATE TABLE IF NOT EXISTS public.works (
   github text,
   featured boolean NOT NULL DEFAULT false,
   sort_order integer,
+  -- URL segment for /projects/[slug]. Deliberately separate from `title`
+  -- so retitling a project doesn't break links people have already shared.
+  slug text NOT NULL UNIQUE,
+  -- Long-form write-up, authored as markdown, rendered with react-markdown.
+  -- Nullable: a project with no write-up still gets a page.
+  body_md text,
+  -- Short context fields for the detail page header. All nullable.
+  role text,        -- e.g. "Solo build"
+  timeframe text,   -- e.g. "Mar–May 2024 · 6 weeks"
+  outcome text,     -- one-line result
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -70,6 +80,44 @@ ALTER TABLE public.works ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "works_public_read" ON public.works;
 CREATE POLICY "works_public_read"
   ON public.works
+  FOR SELECT
+  TO anon, authenticated
+  USING (true);
+
+
+-- -------------------------------------------------------------------------
+-- Table: project_images  (gallery for /projects/[slug])
+-- -------------------------------------------------------------------------
+-- One row per gallery image. A child table rather than a text[] on works
+-- because each image needs its own alt text, optional caption, and explicit
+-- order — none of which survive being packed into an array.
+--
+-- `image_path` is a path under /public (e.g. "/images/projects/foo/bar.png"),
+-- the same convention as candid_photos and places. A full https:// URL also
+-- works if you later move assets to Supabase Storage; the frontend treats a
+-- leading "/" as local and anything else as remote.
+--
+-- (See supabase/migrations/2026-07-27_project_detail.sql for the migration
+--  that introduced this on the already-live database.)
+CREATE TABLE IF NOT EXISTS public.project_images (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  work_id    uuid NOT NULL REFERENCES public.works(id) ON DELETE CASCADE,
+  image_path text NOT NULL,
+  alt        text NOT NULL,
+  caption    text,
+  sort_order integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Postgres indexes the PK automatically but not the referencing side of a
+-- foreign key, and every gallery read is "WHERE work_id = ... ORDER BY sort_order".
+CREATE INDEX IF NOT EXISTS project_images_work_id_idx
+  ON public.project_images (work_id, sort_order);
+
+ALTER TABLE public.project_images ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "project_images_public_read" ON public.project_images;
+CREATE POLICY "project_images_public_read"
+  ON public.project_images
   FOR SELECT
   TO anon, authenticated
   USING (true);

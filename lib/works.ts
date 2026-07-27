@@ -90,6 +90,10 @@ export type Work = {
   href?: string;
   github?: string;
   featured?: boolean;
+  // URL segment for the detail page: /projects/{slug}. Required, not
+  // optional — the DB column is NOT NULL, so a Work without one means
+  // something upstream is broken and we'd rather find out at compile time.
+  slug: string;
 };
 
 /**
@@ -109,5 +113,6 @@ export function toWork(api: ApiWork): Work {
     href: api.href ?? undefined,
     github: api.github ?? undefined,
     featured: api.featured ?? false,
+    slug: api.slug,
   };
 }

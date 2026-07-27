@@ -43,6 +43,29 @@ export type ApiWork = {
   href?: string | null;
   github?: string | null;
   featured?: boolean;
+  // URL segment for /projects/[slug]. In the LIST payload because every card
+  // needs it to build its link.
+  slug: string;
+};
+
+export type ApiProjectImage = {
+  // Either a path under /public ("/images/projects/foo.png") or a full URL.
+  image_path: string;
+  alt: string;
+  caption?: string | null;
+};
+
+/**
+ * The richer shape returned by GET /works/{slug}. Mirrors ProjectDetail in
+ * api/schemas.py, which subclasses Work — so we extend ApiWork here for the
+ * same reason: the two can't drift apart on the shared fields.
+ */
+export type ApiProjectDetail = ApiWork & {
+  body_md?: string | null;
+  role?: string | null;
+  timeframe?: string | null;
+  outcome?: string | null;
+  images: ApiProjectImage[];
 };
 
 export type ApiRotatingRole = { label: string };
@@ -155,6 +178,50 @@ async function getJson<T>(path: string, fallback: T): Promise<T> {
 
 export async function fetchWorks(): Promise<ApiWork[]> {
   return getJson<ApiWork[]>("/works", []);
+}
+
+/**
+ * Fetch one project by slug for /projects/[slug].
+ *
+ * Returns `null` when the project doesn't exist, so the page can call Next's
+ * `notFound()`. This deliberately does NOT use `getJson`: that helper folds
+ * every failure into the same fallback value, and here we need to tell two
+ * very different failures apart —
+ *
+ *   404  → the slug is genuinely wrong. Render the not-found page.
+ *   502  → FastAPI or Supabase is having a bad day. The project probably
+ *          exists; we just can't see it right now.
+ *
+ * Both currently return null (there's no good "try again later" page yet),
+ * but they're logged differently so a real outage doesn't look like a typo
+ * in your logs. If you later add an error boundary, this is where you'd
+ * `throw` on the 502 branch to trigger it.
+ */
+export async function fetchProject(
+  slug: string,
+): Promise<ApiProjectDetail | null> {
+  try {
+    const res = await fetch(
+      // encodeURIComponent guards against a slug with characters that would
+      // otherwise change the URL's meaning. Our slugs are [a-z0-9-] so this
+      // is belt-and-braces — but the day someone hand-edits a slug in the
+      // dashboard and types a space, this is what stops a broken request.
+      `${API_BASE}/works/${encodeURIComponent(slug)}`,
+      { next: { revalidate: REVALIDATE_SECONDS } },
+    );
+
+    if (res.status === 404) return null;
+
+    if (!res.ok) {
+      console.error(`[api] /works/${slug} returned ${res.status}`);
+      return null;
+    }
+
+    return (await res.json()) as ApiProjectDetail;
+  } catch (err) {
+    console.error(`[api] /works/${slug} fetch failed:`, err);
+    return null;
+  }
 }
 
 const EMPTY_BUNDLE: ApiContentBundle = {
