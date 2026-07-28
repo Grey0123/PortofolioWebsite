@@ -1,0 +1,25 @@
+# Files Vercel should not upload or build.
+#
+# api/ — the FastAPI backend.
+#
+# Vercel treats a root-level `api/` directory as serverless functions by
+# convention, so every deploy was installing api/requirements.txt and shipping
+# a second, unconfigured copy of the backend as a Python lambda:
+#
+#     Installing required dependencies from api/requirements.txt...
+#
+# That copy has no SUPABASE_SERVICE_ROLE_KEY, so it can't reach the database
+# and does nothing — but it burns build minutes and is a live endpoint nobody
+# is watching. The real backend deploys separately to Render (Root Directory
+# `api`), which reads the folder straight from GitHub and is unaffected by
+# this file.
+api/
+
+# Local Python artifacts, in case they ever escape .gitignore.
+**/__pycache__/
+**/.venv/
+
+# Legacy standalone HTML from the pre-Next.js site (~3.5 MB of it). Kept in the
+# repo for visual reference; no reason to ship it to the CDN.
+*standalone*.html
+portfolio-html.html

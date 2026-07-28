@@ -47,7 +47,42 @@ export const revalidate = 60;
  */
 export async function generateStaticParams() {
   const works = await fetchWorks();
-  return works.map((w) => ({ slug: w.slug }));
+
+  // fetchWorks swallows failures and returns [] — deliberately, so a sleeping
+  // backend can't fail the whole build. But that silence has already cost us
+  // once: the first deploy of this feature hit a 502 here (Render was asleep,
+  // Vercel waited 35s, gave up) and prerendered ZERO project pages. The build
+  // reported success; the pages just quietly became on-demand and took a
+  // cold-start minute to load.
+  //
+  // So: keep the tolerance, lose the silence. This warning is visible in the
+  // Vercel build log, right where you'd be looking.
+  if (works.length === 0) {
+    console.warn(
+      "\n[projects] generateStaticParams got 0 works — NO project pages will " +
+        "be prerendered.\n  Usual cause: the backend was unreachable or asleep " +
+        "during the build (look for a '/works returned 5xx' line above).\n  " +
+        "The pages still work, but render on demand. Redeploy once the backend " +
+        "is awake to restore static generation.\n",
+    );
+  }
+
+  // Guard against a slug-less payload. If the BACKEND is out of date, its
+  // Pydantic `Work` model has no `slug` field and response_model strips the
+  // column out — so every entry here would be `{ slug: undefined }`, and Next
+  // would try to prerender "/projects/undefined". Filtering keeps a stale
+  // backend from generating garbage routes.
+  const withSlugs = works.filter((w) => Boolean(w.slug));
+
+  if (withSlugs.length < works.length) {
+    console.warn(
+      `\n[projects] ${works.length - withSlugs.length} of ${works.length} works ` +
+        "came back with no slug. The backend is almost certainly running code " +
+        "from before the project-detail migration — redeploy it.\n",
+    );
+  }
+
+  return withSlugs.map((w) => ({ slug: w.slug }));
 }
 
 /* ==================================================================

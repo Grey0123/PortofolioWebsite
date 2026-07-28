@@ -183,25 +183,36 @@ export async function fetchWorks(): Promise<ApiWork[]> {
 /**
  * Fetch one project by slug for /projects/[slug].
  *
- * Returns `null` when the project doesn't exist, so the page can call Next's
- * `notFound()`. This deliberately does NOT use `getJson`: that helper folds
- * every failure into the same fallback value, and here we need to tell two
- * very different failures apart —
+ * Returns `null` ONLY when the project genuinely doesn't exist (404), so the
+ * page can call `notFound()`. Every other failure THROWS.
  *
- *   404  → the slug is genuinely wrong. Render the not-found page.
- *   502  → FastAPI or Supabase is having a bad day. The project probably
- *          exists; we just can't see it right now.
+ * Why throwing is the right call here — a story worth remembering:
  *
- * Both currently return null (there's no good "try again later" page yet),
- * but they're logged differently so a real outage doesn't look like a typo
- * in your logs. If you later add an error boundary, this is where you'd
- * `throw` on the 502 branch to trigger it.
+ * The first deploy of this feature shipped the frontend to Vercel while the
+ * backend on Render was still running older code without the /works/{slug}
+ * route. FastAPI answered "404 Not Found" for a route it didn't have. The
+ * original version of this function treated every failure the same way and
+ * returned null, so the page rendered a friendly "No such project" — for
+ * FIVE projects that all existed perfectly well in the database. A deployment
+ * problem wearing the costume of a typo'd URL.
+ *
+ * Silently degrading is right when the data is genuinely optional (see
+ * `getJson`, which powers sections that can render empty). It is wrong when
+ * the fallback is a *lie about reality*. A 502 means "I can't tell you
+ * whether this project exists" — answering "it doesn't" is worse than
+ * admitting the failure, because nobody ever investigates a 404.
+ *
+ * The cost of this choice: a backend outage now shows an error page for
+ * project URLs instead of a soft 404. That's the intended trade. The error
+ * boundary in app/projects/[slug]/error.tsx renders it politely.
  */
 export async function fetchProject(
   slug: string,
 ): Promise<ApiProjectDetail | null> {
+  let res: Response;
+
   try {
-    const res = await fetch(
+    res = await fetch(
       // encodeURIComponent guards against a slug with characters that would
       // otherwise change the URL's meaning. Our slugs are [a-z0-9-] so this
       // is belt-and-braces — but the day someone hand-edits a slug in the
@@ -209,19 +220,44 @@ export async function fetchProject(
       `${API_BASE}/works/${encodeURIComponent(slug)}`,
       { next: { revalidate: REVALIDATE_SECONDS } },
     );
-
-    if (res.status === 404) return null;
-
-    if (!res.ok) {
-      console.error(`[api] /works/${slug} returned ${res.status}`);
-      return null;
-    }
-
-    return (await res.json()) as ApiProjectDetail;
   } catch (err) {
-    console.error(`[api] /works/${slug} fetch failed:`, err);
+    // Network-level failure: DNS, connection refused, TLS. The backend isn't
+    // answering at all. Wrapping rather than rethrowing keeps the original
+    // error as `cause` while adding the context that matters (which URL).
+    throw new Error(
+      `[api] cannot reach ${API_BASE} for /works/${slug}. Is the backend deployed and awake?`,
+      { cause: err },
+    );
+  }
+
+  if (res.status === 404) {
+    // Two different things produce a 404 here and they mean opposite things:
+    //
+    //   {"detail":"No project with slug 'foo'"}  ← OUR handler. The route
+    //       exists, the row doesn't. A genuinely missing project.
+    //   {"detail":"Not Found"}                   ← FastAPI's default for an
+    //       UNREGISTERED ROUTE. The backend is out of date and doesn't have
+    //       GET /works/{slug} at all.
+    //
+    // We can't act on the difference (both are "no project to show"), but we
+    // log the body so the distinction is visible in the Vercel function logs
+    // instead of invisible. A bare "Not Found" in those logs means: redeploy
+    // the backend, don't go hunting for a typo.
+    const detail = await res.text().catch(() => "<unreadable body>");
+    console.error(`[api] /works/${slug} → 404. Response body: ${detail}`);
     return null;
   }
+
+  if (!res.ok) {
+    // 5xx from Render's edge (commonly 502 while a sleeping free-tier
+    // instance wakes up), or any other non-OK status.
+    throw new Error(
+      `[api] /works/${slug} returned ${res.status} ${res.statusText}. ` +
+        `The project may exist — the backend just couldn't answer.`,
+    );
+  }
+
+  return (await res.json()) as ApiProjectDetail;
 }
 
 const EMPTY_BUNDLE: ApiContentBundle = {
