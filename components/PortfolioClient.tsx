@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
-import { FaExternalLinkAlt, FaGithub, FaStar } from "react-icons/fa";
+import { FaArrowRight, FaExternalLinkAlt, FaGithub, FaStar } from "react-icons/fa";
 import type { IconType } from "react-icons";
 
 import type { ApiCategory } from "@/lib/api";
@@ -272,6 +272,35 @@ function WorkCard({ work, category }: { work: Work; category: Category }) {
         style={{ background: `radial-gradient(circle at 50% 0%, ${cat.color}, transparent 70%)` }}
       />
 
+      {/* WHOLE-CARD LINK OVERLAY.
+          The card already contains Live/Code links, and nesting <a> inside <a>
+          is invalid HTML — browsers silently un-nest it and both links break.
+          So instead of wrapping the card, we lay a single transparent link
+          OVER it.
+
+          Why an overlay rather than the usual "stretched link" trick (a real
+          link on the title with `after:absolute after:inset-0`): that
+          pseudo-element resolves against the nearest POSITIONED ancestor, and
+          the title sits inside two absolutely-positioned wrappers. It would
+          have stretched over the title strip only, not the card. Rendering the
+          overlay as a direct child of the card avoids that trap entirely.
+
+          `aria-label` carries the accessible name, since the link has no text
+          of its own. The footer below sits at z-10 so its links stay clickable
+          above this.
+
+          Guard: no link at all when `slug` is missing. That happens when the
+          BACKEND is out of date — its Pydantic model has no slug field, so
+          response_model strips the column — and without this the card would
+          link to /projects/undefined. */}
+      {work.slug && (
+        <Link
+          href={`/projects/${work.slug}`}
+          aria-label={`${work.title} — read the case study`}
+          className="absolute inset-0 z-[5] rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+        />
+      )}
+
       {/* Image / fallback */}
       <div className="relative aspect-[4/3] overflow-hidden">
         <WorkThumbnail work={work} cat={cat} />
@@ -303,7 +332,7 @@ function WorkCard({ work, category }: { work: Work; category: Category }) {
         </div>
 
         <div className="absolute inset-x-0 bottom-0 p-5">
-          <h3 className="text-lg font-semibold text-white md:text-xl">
+          <h3 className="text-lg font-semibold text-white transition-colors duration-300 group-hover:text-accent md:text-xl">
             {work.title}
           </h3>
         </div>
@@ -324,8 +353,12 @@ function WorkCard({ work, category }: { work: Work; category: Category }) {
           ))}
         </div>
 
-        {(work.href || work.github) && (
-          <div className="mt-1 flex items-center gap-3 border-t border-white/5 pt-4">
+        {/* Footer row. `relative z-10` lifts it above the card's link overlay
+            (z-5) so these links remain individually clickable — without it,
+            every click here would navigate to the detail page instead of
+            opening the external URL. */}
+        {(work.slug || work.href || work.github) && (
+          <div className="relative z-10 mt-1 flex items-center gap-3 border-t border-white/5 pt-4">
             {work.href && (
               <ActionLink href={work.href} label="Live">
                 <FaExternalLinkAlt className="text-xs" />
@@ -335,6 +368,22 @@ function WorkCard({ work, category }: { work: Work; category: Category }) {
               <ActionLink href={work.github} label="Code">
                 <FaGithub className="text-sm" />
               </ActionLink>
+            )}
+
+            {/* Visible affordance. The overlay makes the whole card clickable,
+                but a card that LOOKS static gets no clicks — discoverability
+                needs a cue. This is a <span>, not a second <Link>: the overlay
+                above already handles the navigation and is the accessible
+                name for it. A duplicate link here would make keyboard users
+                tab twice to reach the same page. `ml-auto` pushes it right. */}
+            {work.slug && (
+              <span
+                aria-hidden
+                className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-white/60 transition-colors group-hover:text-accent"
+              >
+                Case study
+                <FaArrowRight className="text-[10px] transition-transform duration-300 group-hover:translate-x-0.5" />
+              </span>
             )}
           </div>
         )}
