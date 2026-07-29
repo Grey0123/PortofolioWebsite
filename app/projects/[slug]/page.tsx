@@ -21,6 +21,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { FaArrowLeft, FaExternalLinkAlt, FaGithub, FaStar } from "react-icons/fa";
 
+import ProjectBody from "@/components/ProjectBody";
 import { fetchContent, fetchProject, fetchWorks } from "@/lib/api";
 import { getCategory, toCategory } from "@/lib/works";
 
@@ -278,19 +279,15 @@ export default async function ProjectPage({
         )}
 
         {/* ---- Write-up ------------------------------------------------ */}
-        {/* Step 6 replaces this block with <ProjectBody> rendering
-            project.body_md through react-markdown. Until then we show the raw
-            presence/absence so the page is honest about what's missing rather
-            than silently ending after the tech chips. */}
+        {/* `body_md` is authored in the Supabase dashboard — see
+            docs/WRITING-PROJECTS.md. Null is a normal state, not an error: a
+            project can go live with just its summary while the long-form
+            write-up is still being written. */}
         <section className="mt-12 border-t border-white/5 pt-10">
           {project.body_md ? (
-            <p className="whitespace-pre-wrap text-base leading-relaxed text-white/85">
-              {project.body_md}
-            </p>
+            <ProjectBody markdown={project.body_md} />
           ) : (
-            <p className="text-sm text-white/40">
-              Write-up coming soon.
-            </p>
+            <p className="text-sm text-white/40">Write-up coming soon.</p>
           )}
         </section>
 
