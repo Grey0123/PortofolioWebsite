@@ -16,6 +16,16 @@ body {
    Done here (base layer) instead of adding `font-display` to every heading —
    one rule, zero missed spots. Tailwind classes on individual elements
    (e.g. the serif-italic flourish spans) still win over this base rule. */
+/* Text selection tinted with the accent instead of the browser's default
+   blue. A one-line detail, but selection colour is one of the few pieces of
+   browser chrome you can theme, and the default blue against this palette is
+   the most jarring thing on the page the moment anyone drags across a
+   heading. Alpha rather than solid so the text underneath stays legible. */
+::selection {
+  background: rgba(255, 0, 79, 0.32);
+  color: #fff;
+}
+
 @layer base {
   h1, h2, h3 {
     font-family: var(--font-grotesk), var(--font-poppins), ui-sans-serif, sans-serif;

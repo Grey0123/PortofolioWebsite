@@ -2,7 +2,12 @@
 // In the App Router this replaces the old <html>/<body> in index.html.
 
 import type { Metadata } from "next";
-import { Poppins, Space_Grotesk } from "next/font/google";
+import {
+  Instrument_Serif,
+  JetBrains_Mono,
+  Poppins,
+  Space_Grotesk,
+} from "next/font/google";
 import "./globals.css";
 import PageBackground from "@/components/background/PageBackground";
 
@@ -21,6 +26,35 @@ const grotesk = Space_Grotesk({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
   variable: "--font-grotesk",
+  display: "swap",
+});
+
+// Monospace face, used for every "machine-generated" value on the project
+// pages: commit hashes, timestamps, file sizes, percentages, metric numbers.
+//
+// The typographic reason this matters more than it sounds: mono digits are
+// TABULAR, meaning every digit occupies the same width. In a column of
+// right-aligned numbers that's what keeps them optically aligned instead of
+// visibly ragged. It also does semantic work — a monospace run reads as
+// "this came from a machine, not from me", which is exactly the distinction
+// a repo-style page is making on every row.
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-mono",
+  display: "swap",
+});
+
+// Used for exactly one character: the italic full stop after a project
+// title. A serif punctuation mark against a geometric sans headline is a
+// deliberate small dissonance — the kind of detail that reads as considered
+// rather than defaulted. Loading a whole font for one glyph is affordable
+// because next/font subsets it to the characters actually used.
+const serif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: ["400"],
+  style: ["italic", "normal"],
+  variable: "--font-serif",
   display: "swap",
 });
 
@@ -134,7 +168,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${poppins.variable} ${grotesk.variable}`}>
+    <html
+      lang="en"
+      className={`${poppins.variable} ${grotesk.variable} ${mono.variable} ${serif.variable}`}
+    >
       <body className="bg-ink font-sans text-white antialiased">
         {/* Global deep-space layer. Sits BEHIND every section so stars and
             nebula washes continue from the hero through About → Services →
